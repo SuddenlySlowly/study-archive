@@ -1,81 +1,188 @@
 (function () {
   "use strict";
 
-  const root = document.documentElement;
-  const themeBtn = document.querySelector("[data-theme-toggle]");
-  if (themeBtn) {
-    themeBtn.addEventListener("click", () => {
-      const dark = root.dataset.theme
-        ? root.dataset.theme === "dark"
-        : matchMedia("(prefers-color-scheme: dark)").matches;
-      root.dataset.theme = dark ? "light" : "dark";
-      try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+  const doc = document.documentElement;
+  const body = document.body;
+  const root = body.dataset.root || "";
+  const fold = (value) => String(value || "").normalize("NFC").toLowerCase().replace(/\s+/g, "");
+  const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, value) { try { localStorage.setItem(key, value); } catch (e) {} },
+  };
+
+  /* theme */
+  document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const dark = doc.dataset.theme ? doc.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      doc.dataset.theme = dark ? "light" : "dark";
+      store.set("theme", doc.dataset.theme);
     });
+  });
+
+  /* search */
+  let index = null;
+  const loadIndex = () => index || (index = fetch(`${root}assets/search.json`).then((r) => r.json()).catch(() => []));
+  const score = (entry, q) => {
+    const title = fold(entry.t);
+    if (title.includes(q)) return 3;
+    if ((entry.g || []).some((tag) => fold(tag).includes(q))) return 2;
+    if (fold(entry.s).includes(q) || fold(entry.k).includes(q)) return 1;
+    return 0;
+  };
+  document.querySelectorAll("[data-search-form]").forEach((form) => {
+    const input = form.querySelector("[data-search]");
+    const pop = form.querySelector("[data-search-pop]");
+    let hits = [];
+    let active = -1;
+    const close = () => { pop.hidden = true; active = -1; };
+    const paint = () => {
+      pop.querySelectorAll("a").forEach((a, i) => a.setAttribute("aria-selected", String(i === active)));
+    };
+    input.addEventListener("focus", loadIndex, { once: true });
+    input.addEventListener("input", async () => {
+      const q = fold(input.value);
+      if (!q) return close();
+      const list = await loadIndex();
+      hits = list.map((e) => ({ e, s: score(e, q) })).filter((r) => r.s).sort((a, b) => b.s - a.s).slice(0, 8).map((r) => r.e);
+      active = -1;
+      pop.innerHTML = hits.length
+        ? hits.map((e) => `<a href="${root}${e.u}" role="option" style="--c:${esc(e.c)}"><small>${esc(e.k)}${e.d ? ` · ${esc(e.d.replaceAll("-", "."))}` : ""}</small><b>${esc(e.t)}</b></a>`).join("")
+        : `<p>‘${esc(input.value)}’에 맞는 장이 없습니다.</p>`;
+      pop.hidden = false;
+    });
+    input.addEventListener("keydown", (ev) => {
+      if (pop.hidden) return;
+      const links = pop.querySelectorAll("a");
+      if (ev.key === "ArrowDown") { active = Math.min(links.length - 1, active + 1); paint(); ev.preventDefault(); }
+      else if (ev.key === "ArrowUp") { active = Math.max(-1, active - 1); paint(); ev.preventDefault(); }
+      else if (ev.key === "Escape") close();
+    });
+    form.addEventListener("submit", (ev) => {
+      const links = pop.querySelectorAll("a");
+      const pick = links[Math.max(active, 0)];
+      if (!pop.hidden && pick) { ev.preventDefault(); location.href = pick.href; }
+    });
+    document.addEventListener("click", (ev) => { if (!form.contains(ev.target)) close(); });
+  });
+
+  /* library tabs + ?q= filter */
+  const tabs = [...document.querySelectorAll("[data-shelf-tab]")];
+  if (tabs.length) {
+    const shelves = [...document.querySelectorAll("[data-shelf]")];
+    const empty = document.querySelector("[data-lib-empty]");
+    const note = document.querySelector("[data-lib-query]");
+    const q = fold(new URLSearchParams(location.search).get("q"));
+    let current = location.hash.replace("#", "") || "all";
+    const apply = () => {
+      tabs.forEach((t) => t.setAttribute("aria-pressed", String(t.dataset.shelfTab === current)));
+      let shown = 0;
+      shelves.forEach((sec) => {
+        const okTopic = current === "all" || sec.dataset.shelf === current;
+        let n = 0;
+        sec.querySelectorAll("[data-find]").forEach((cell) => {
+          cell.hidden = Boolean(q) && !fold(cell.dataset.find).includes(q);
+          if (!cell.hidden) n += 1;
+        });
+        sec.hidden = !okTopic || n === 0;
+        if (!sec.hidden) shown += n;
+      });
+      empty.hidden = shown > 0;
+    };
+    if (q && note) { note.hidden = false; note.innerHTML = `‘${esc(new URLSearchParams(location.search).get("q"))}’ 검색 결과 · <a href="./">모두 보기</a>`; }
+    if (!tabs.some((t) => t.dataset.shelfTab === current)) current = "all";
+    tabs.forEach((t) => t.addEventListener("click", () => {
+      current = t.dataset.shelfTab;
+      history.replaceState(null, "", current === "all" ? location.pathname + location.search : `#${current}`);
+      apply();
+    }));
+    apply();
   }
 
-  const fold = (value) => value.normalize("NFC").toLowerCase().replace(/\s+/g, "");
-  const search = document.querySelector("[data-search]");
-  const groups = [...document.querySelectorAll("[data-filter-group]")];
-  function applyQuery(raw) {
-    const q = raw.normalize("NFC").trim().toLowerCase();
-    const compact = fold(raw);
-    document.querySelectorAll("[data-find]").forEach((el) => {
-      const hay = el.dataset.find || "";
-      el.hidden = Boolean(q) && !hay.includes(q) && !fold(hay).includes(compact);
-    });
-    groups.forEach((group) => {
-      const items = [...group.querySelectorAll("[data-find]")];
-      const empty = group.querySelector("[data-empty]");
-      if (!empty) return;
-      empty.hidden = items.some((el) => !el.hidden);
-    });
-    const live = document.querySelector("[data-search-count]");
-    if (live) {
-      const n = document.querySelectorAll(".index-list [data-find]:not([hidden])").length;
-      live.textContent = q ? `검색 결과 ${n}개` : "";
-    }
-  }
-  if (search && document.body.dataset.page === "home") {
-    const params = new URLSearchParams(location.search);
-    if (params.get("q")) search.value = params.get("q");
-    applyQuery(search.value);
-    search.addEventListener("input", () => applyQuery(search.value));
+  /* reader: drawer */
+  const drawer = document.querySelector("[data-drawer]");
+  if (drawer) {
+    const scrim = document.querySelector(".drawer-scrim");
+    const opener = document.querySelector("[data-drawer-open]");
+    const set = (open) => {
+      drawer.hidden = !open;
+      scrim.hidden = !open;
+      opener.setAttribute("aria-expanded", String(open));
+      if (open) (drawer.querySelector('[aria-current="page"]') || drawer.querySelector("a")).focus();
+      else opener.focus();
+    };
+    opener.addEventListener("click", () => set(true));
+    document.querySelectorAll("[data-drawer-close]").forEach((el) => el.addEventListener("click", () => set(false)));
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !drawer.hidden) set(false); });
   }
 
-  const bar = document.querySelector("[data-status-bar]");
-  if (bar) {
-    const cards = [...document.querySelectorAll("[data-status]")];
-    const tagButtons = [...document.querySelectorAll("[data-tag]")];
-    let status = "all";
-    let tag = "all";
-    function paint() {
-      cards.forEach((card) => {
-        const tags = (card.dataset.tags || "").split(",").filter(Boolean);
-        const okStatus = status === "all" || card.dataset.status === status;
-        const okTag = tag === "all" || tags.includes(tag);
-        card.hidden = !(okStatus && okTag);
-      });
-      bar.querySelectorAll("[data-status-btn]").forEach((btn) => {
-        btn.setAttribute("aria-pressed", String(btn.dataset.statusBtn === status));
-      });
-      tagButtons.forEach((btn) => {
-        btn.setAttribute("aria-pressed", String(btn.dataset.tag === tag));
-      });
-    }
-    bar.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-status-btn]");
+  /* reader: progress + on-this-page */
+  const bar = document.querySelector("[data-progress]");
+  const otp = [...document.querySelectorAll("[data-otp]")];
+  if (bar || otp.length) {
+    const secs = otp.map((a) => document.getElementById(a.dataset.otp)).filter(Boolean);
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const max = document.documentElement.scrollHeight - innerHeight;
+      if (bar) bar.style.width = `${max > 0 ? Math.min(100, (scrollY / max) * 100) : 100}%`;
+      let on = secs[0];
+      for (const s of secs) if (s.getBoundingClientRect().top < 120) on = s;
+      if (max > 0 && scrollY >= max - 2) on = secs[secs.length - 1];
+      otp.forEach((a) => a.classList.toggle("on", on && a.dataset.otp === on.id));
+    };
+    addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+  }
+
+  /* chart series toggles */
+  document.querySelectorAll("[data-series]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const fig = btn.closest("figure");
+      const on = btn.getAttribute("aria-pressed") !== "true";
+      btn.setAttribute("aria-pressed", String(on));
+      fig.classList.toggle(`hide-s${btn.dataset.series}`, !on);
+    });
+  });
+
+  /* checklists */
+  document.querySelectorAll("[data-check]").forEach((box) => {
+    const key = `check:${box.dataset.check}`;
+    box.checked = store.get(key) === "1";
+    box.addEventListener("change", () => store.set(key, box.checked ? "1" : "0"));
+  });
+
+  /* quiz */
+  document.querySelectorAll("[data-quiz]").forEach((q) => {
+    q.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-opt]");
       if (!btn) return;
-      status = btn.dataset.statusBtn;
-      paint();
+      const right = btn.dataset.opt === q.dataset.answer;
+      q.querySelectorAll("[data-opt]").forEach((b) => b.classList.remove("wrong"));
+      btn.classList.add(right ? "right" : "wrong");
+      if (right) q.querySelector(".why").hidden = false;
     });
-    tagButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        tag = tag === btn.dataset.tag ? "all" : btn.dataset.tag;
-        paint();
-      });
-    });
+  });
+
+  /* tooltips */
+  const tip = document.querySelector("[data-tip-box]");
+  if (tip) {
+    const show = (ev) => {
+      const el = ev.target.closest && ev.target.closest("[data-tip]");
+      if (!el) { tip.hidden = true; return; }
+      tip.textContent = el.dataset.tip;
+      tip.hidden = false;
+      const x = Math.min(innerWidth - tip.offsetWidth - 8, ev.clientX + 12);
+      const y = ev.clientY - tip.offsetHeight - 12;
+      tip.style.left = `${Math.max(8, x)}px`;
+      tip.style.top = `${y < 8 ? ev.clientY + 16 : y}px`;
+    };
+    document.addEventListener("pointermove", show);
+    document.addEventListener("scroll", () => { tip.hidden = true; }, { passive: true });
+    document.querySelectorAll("[data-tip] title").forEach((t) => t.remove());
   }
 
+  /* youtube */
   document.querySelectorAll("[data-yt]").forEach((button) => {
     button.addEventListener("click", () => {
       const frame = document.createElement("iframe");
