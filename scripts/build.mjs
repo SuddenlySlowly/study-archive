@@ -12,6 +12,8 @@ const itemsByTopic = Object.fromEntries(data.topics.map((topic) => [topic.id, []
 for (const item of data.items) itemsByTopic[item.topic].push(item);
 const reading = JSON.parse(readFileSync(join(root, "data/reading.json"), "utf8"));
 validateReading(reading);
+const pora = JSON.parse(readFileSync(join(root, "data/pora.json"), "utf8"));
+validatePora(pora);
 const SHELF_META = {
   문학: { id: "literature", en: "Literature", color: "#2f5f8f", colorDark: "#a3c8f0", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
   비문학: { id: "nonfiction", en: "Non-fiction", color: "#5b4a8e", colorDark: "#c9bdf5", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
@@ -45,6 +47,7 @@ cpSync(join(root, "src/favicon.svg"), join(dist, "favicon.svg"));
 mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
 cpSync(join(root, "data/reading.json"), join(dist, "data/reading.json"));
+cpSync(join(root, "data/pora.json"), join(dist, "data/pora.json"));
 cpSync(join(root, "src/covers"), join(dist, "covers"), { recursive: true });
 writeFileSync(join(dist, ".nojekyll"), "");
 writeFileSync(join(dist, "assets/search.json"), JSON.stringify(searchIndex()));
@@ -57,6 +60,7 @@ site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description
 site("summaries/index.html", 1, { title: `콘텐츠별 요약 · ${data.title}`, description: "콘텐츠마다 날짜·주제·핵심 요약·출처·태그·상태를 대주제별로 모았습니다.", page: "summaries", nav: "summaries", body: renderSummaries });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
 site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
+site("pora/index.html", 1, { title: `${pora.title} (${pora.short}) · ${data.title}`, description: pora.intro, page: "pora", tab: "pora", body: renderPora });
 for (const shelf of shelves) {
   site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", tab: "reading", nav: shelf.id, body: (p) => renderShelf(shelf, p) });
 }
@@ -147,7 +151,7 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <body data-page="${esc(pageName || "")}" data-tab="${tab}" data-root="${prefix}"${style}>
 <a class="skip" href="#content">본문으로</a>
 ${tabBar(prefix, tab, pageName)}
-${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : siteHeader(prefix, nav)}
+${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : tab === "pora" ? poraHeader(prefix) : siteHeader(prefix, nav)}
 ${body(prefix)}
 ${footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
@@ -171,11 +175,12 @@ function searchBox(prefix, placeholder) {
     </form>`;
 }
 
-// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/
+// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/, PoRA = /pora/
 function tabBar(prefix, tab, pageName) {
   const tabs = [
     ["study", "Study", prefix, pageName === "home"],
     ["reading", "독서기록", `${prefix}reading/`, pageName === "reading"],
+    ["pora", tabLabel(pora), `${prefix}pora/`, pageName === "pora"],
   ].map(([id, label, href, isRoot]) => `<a class="tab${id === tab ? " is-active" : ""}" href="${href}"${id === tab ? ` aria-current="${isRoot ? "page" : "true"}"` : ""}>${label}</a>`).join("");
   return `<div class="tabbar">
   <div class="tabbar-in">
@@ -187,6 +192,12 @@ function tabBar(prefix, tab, pageName) {
     </div>
   </div>
 </div>`;
+}
+
+// 좁은 화면에서는 짧은 이름(PoRA)만 남긴다
+function tabLabel({ tab, short }) {
+  if (!tab.startsWith(short)) return esc(tab);
+  return `${esc(short)}<span class="tab-long">${esc(tab.slice(short.length))}</span>`;
 }
 
 function siteHeader(prefix, nav) {
@@ -217,6 +228,17 @@ function readingHeader(prefix, nav) {
 </header>`;
 }
 
+function poraHeader(prefix) {
+  const links = [["#pora-links", "바로가기"], ["#pora-progress", "공부 진도"]]
+    .map(([href, label]) => `<a href="${href}">${label}</a>`).join("");
+  return `<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="${prefix}pora/"><span>${esc(pora.tab)}</span></a>
+    <nav class="topnav" aria-label="${esc(pora.short)}">${links}</nav>
+  </div>
+</header>`;
+}
+
 function readerHeader(prefix, item) {
   const topic = topicById[item.topic];
   return `<header class="readbar">
@@ -239,6 +261,12 @@ function readerHeader(prefix, item) {
 }
 
 function footer(prefix, tab) {
+  if (tab === "pora") {
+    return `<footer class="site-footer"><div class="wrap foot-in">
+  <p>© ${esc(pora.title)} · ${esc(pora.authors)}(${esc(pora.org)}). 진도 체크는 이 브라우저에만 저장됩니다.</p>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}pora/#pora-links">바로가기</a><a href="${prefix}pora/#pora-progress">공부 진도</a><a href="${prefix}data/pora.json">pora.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+</div></footer>`;
+  }
   if (tab === "reading") {
     return `<footer class="site-footer"><div class="wrap foot-in">
   <p>© 독서 기록 · 책 정보는 교보문고 기준입니다.</p>
@@ -658,6 +686,52 @@ function renderReading(p) {
         const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
         return `<li style="${topicVars(shelf)}"><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time><a href="${p}reading/books/${esc(book.id)}/">${esc(book.title)}</a><span>${esc(what)}${log.to != null ? ` <b>+${gained}쪽</b>` : ""}${log.minutes ? ` · ${log.minutes}분` : ""}</span></li>`;
       }).join("")}</ol></figure>` : ""}
+    </div>
+  </section>
+</main>`;
+}
+
+/* ---------- PoRA ---------- */
+
+function renderPora(p) {
+  const ext = `target="_blank" rel="noopener noreferrer"`;
+  return `<main id="content" class="cream" style="${topicVars(pora)}">
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="hero-kicker">${esc(pora.short)} · ${esc(pora.license)}</p>
+          <h1>${esc(pora.title)}<br><em>(${esc(pora.short)})</em></h1>
+          <p class="hero-small">${esc(pora.authors)} (${esc(pora.org)}) · ${esc(dotDate(pora.announcement.date))} 공개</p>
+        </div>
+        <div class="hero-side">
+          <p>${esc(pora.intro)}</p>
+          <a class="hero-link" href="${esc(pora.announcement.url)}" ${ext}>출처: ${esc(pora.announcement.label)} ↗</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="pora-links">
+    <div class="wrap">
+      <p class="kicker">바로가기</p>
+      <h2 class="sec-title">교재와 강의 자료</h2>
+      <p class="sub">카드를 누르면 새 탭에서 열립니다.</p>
+      <ul class="pora-links">${pora.links.map((link) => `<li><a class="pora-link" href="${esc(link.url)}" ${ext}><span class="pora-ico" aria-hidden="true">${link.icon}</span><span class="pora-txt"><b>${esc(link.label)}</b><small>${esc(link.desc)}</small><span class="pora-url">${esc(new URL(link.url).host)}</span></span><span class="pora-go" aria-hidden="true">↗</span><span class="sr-only">(새 탭)</span></a></li>`).join("")}</ul>
+    </div>
+  </section>
+
+  <section class="band alt" id="pora-progress">
+    <div class="wrap pora-progress">
+      <p class="kicker">공부 진도</p>
+      <h2 class="sec-title">자율성 스택 체크리스트</h2>
+      <p class="sub">다 공부한 단원에 체크하세요. 체크 상태는 이 브라우저(localStorage)에만 저장됩니다.</p>
+      <figure class="card-panel" data-pora>
+        <div class="meter" role="progressbar" aria-label="공부 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-pora-meter><i style="width:0%"></i></div>
+        <p class="meter-label"><b data-pora-pct>0%</b><span data-pora-count>0 / ${pora.checklist.length} 단원</span></p>
+        <ol class="checks pora-checks">${pora.checklist.map((step) => `<li><label><input type="checkbox" data-pora-check="${esc(step.id)}"><span><b>${esc(step.label)}</b> <small>${esc(step.en)}</small></span></label></li>`).join("")}</ol>
+        <p class="pora-reset"><button type="button" class="btn ghost" data-pora-reset>체크 모두 지우기</button></p>
+      </figure>
     </div>
   </section>
 </main>`;
@@ -1337,6 +1411,33 @@ function validate(archive) {
     if (rows.length !== topic.overviewCount) throw new Error(`${topic.name} count`);
     const latest = rows.map((row) => row.date).sort().at(-1);
     if (latest !== topic.overviewLatest) throw new Error(`${topic.name} latest`);
+  }
+}
+
+function validatePora(book) {
+  for (const key of ["title", "short", "tab", "authors", "org", "intro", "color", "colorDark"]) {
+    if (!String(book[key] || "").trim()) throw new Error(`pora: ${key} missing`);
+  }
+  const httpsUrl = (url, ctx) => {
+    let ok = false;
+    try { ok = new URL(url).protocol === "https:"; } catch {}
+    if (!ok) throw new Error(`pora: ${ctx} url ${url}`);
+  };
+  const { announcement } = book;
+  if (!announcement || !/^\d{4}-\d{2}-\d{2}$/.test(announcement.date)) throw new Error(`pora: announcement date ${announcement?.date}`);
+  httpsUrl(announcement.url, "announcement");
+  if (!book.links?.length) throw new Error("pora: links empty");
+  for (const link of book.links) {
+    if (!link.icon || !link.label) throw new Error(`pora: link ${link.url} icon/label`);
+    httpsUrl(link.url, link.label);
+  }
+  const ids = new Set();
+  if (!book.checklist?.length) throw new Error("pora: checklist empty");
+  for (const step of book.checklist) {
+    if (!/^[a-z0-9-]+$/.test(step.id || "")) throw new Error(`pora: checklist id ${step.id}`);
+    if (ids.has(step.id)) throw new Error(`pora: duplicate checklist id ${step.id}`);
+    ids.add(step.id);
+    if (!step.label) throw new Error(`pora: checklist ${step.id} label`);
   }
 }
 

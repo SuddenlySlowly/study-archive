@@ -108,7 +108,7 @@ h1, h2, h3 { line-height: 1.3; letter-spacing: -0.02em; }
 .tabbar-in { max-width: 1280px; height: 100%; margin: 0 auto; padding: 0 16px; display: flex; align-items: flex-end; gap: 14px; }
 .tab-logo { align-self: center; display: grid; place-items: center; }
 .tabs { display: flex; gap: 4px; align-self: stretch; align-items: flex-end; }
-.tab { position: relative; display: flex; align-items: center; height: 38px; padding: 0 18px; border-radius: 10px 10px 0 0; text-decoration: none; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.62); letter-spacing: -0.01em; }
+.tab { position: relative; display: flex; white-space: nowrap; align-items: center; height: 38px; padding: 0 18px; border-radius: 10px 10px 0 0; text-decoration: none; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.62); letter-spacing: -0.01em; }
 .tab:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
 .tab.is-active { background: var(--tab-on); color: var(--tab-on-ink); }
 .tab.is-active::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--amber); }
@@ -706,3 +706,22 @@ a.sum-src:hover span { text-decoration: underline; }
 .sum-tags a { color: var(--muted); text-decoration: none; }
 .sum-tags a:hover { color: var(--c); text-decoration: underline; }
 @media (max-width: 720px) { .sum-search { flex-basis: 100%; } }
+/* ---------- PoRA ---------- */
+.pora-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.pora-link { display: flex; gap: 14px; align-items: center; height: 100%; min-width: 0; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 6px 14px 14px 6px; box-shadow: var(--shadow); text-decoration: none; transition: border-color 0.15s, transform 0.15s; }
+.pora-link:hover { border-color: var(--c); transform: translateY(-2px); }
+.pora-ico { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--row); font-size: 22px; }
+.pora-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.pora-txt b { font-size: 16px; font-weight: 800; }
+.pora-txt small { color: var(--ink-2); font-size: 13px; }
+.pora-url { color: var(--muted); font-family: var(--mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pora-go { flex: none; color: var(--c); font-weight: 800; }
+.pora-progress .card-panel { max-width: 720px; }
+.pora-checks { margin-top: 18px; }
+.pora-checks small { color: var(--muted); font-size: 13px; }
+.pora-reset { margin: 14px 0 0; text-align: right; }
+.pora-reset .btn { font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer; }
+.pora-progress .meter-label b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.tab-long { white-space: pre; }
+@media (max-width: 520px) { .tabbar-in { gap: 8px; } .tab { padding: 0 12px; } .tab-long { display: none; } }
+.pora-progress .pora-reset .btn.ghost { color: var(--ink); }
