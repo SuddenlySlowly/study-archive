@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-11T22:14:17+09:00",
+  "books": [
+    {
+      "id": "b1",
+      "title": "폭풍이 온다",
+      "author": "오드 아르네 베스타",
+      "category": "비문학",
+      "totalPages": 308,
+      "status": "reading",
+      "startDate": "2026-10-09",
+      "endDate": "",
+      "rating": null,
+      "memo": "최준영 옮김 · 21세기북스",
+      "created": 1791528600000,
+      "cover": "covers/b1.jpg"
+    }
+  ],
+  "logs": [
+    {
+      "id": "l1",
+      "created": 1791528600000,
+      "date": "2026-10-09",
+      "bookId": "b1",
+      "mode": "reach",
+      "from": null,
+      "to": 102,
+      "note": ""
+    },
+    {
+      "id": "l1a11f8c6095",
+      "created": 1791530655893,
+      "date": "2026-10-09",
+      "bookId": "b1",
+      "mode": "reach",
+      "from": null,
+      "to": 113,
+      "note": ""
+    },
+    {
+      "id": "l1a12b198d55",
+      "created": 1791724457301,
+      "date": "2026-10-11",
+      "bookId": "b1",
+      "mode": "reach",
+      "from": null,
+      "to": 127,
+      "note": "",
+      "minutes": 30
+    }
+  ]
+}
