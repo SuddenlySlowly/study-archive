@@ -188,6 +188,33 @@
     box.addEventListener("change", () => store.set(key, box.checked ? "1" : "0"));
   });
 
+  /* PoRA study progress: one localStorage key per step */
+  const poraBoxes = [...document.querySelectorAll("[data-pora-check]")];
+  if (poraBoxes.length) {
+    const meter = document.querySelector("[data-pora-meter]");
+    const pct = document.querySelector("[data-pora-pct]");
+    const count = document.querySelector("[data-pora-count]");
+    const key = (box) => `pora:${box.dataset.poraCheck}`;
+    const update = () => {
+      const done = poraBoxes.filter((box) => box.checked).length;
+      const value = Math.round((done / poraBoxes.length) * 100);
+      meter.querySelector("i").style.width = `${value}%`;
+      meter.setAttribute("aria-valuenow", String(value));
+      pct.textContent = `${value}%`;
+      count.textContent = `${done} / ${poraBoxes.length} 단원`;
+    };
+    poraBoxes.forEach((box) => {
+      box.checked = store.get(key(box)) === "1";
+      box.addEventListener("change", () => { store.set(key(box), box.checked ? "1" : "0"); update(); });
+    });
+    const reset = document.querySelector("[data-pora-reset]");
+    if (reset) reset.addEventListener("click", () => {
+      poraBoxes.forEach((box) => { box.checked = false; store.set(key(box), "0"); });
+      update();
+    });
+    update();
+  }
+
   /* quiz */
   document.querySelectorAll("[data-quiz]").forEach((q) => {
     q.addEventListener("click", (ev) => {

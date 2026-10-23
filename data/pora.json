@@ -1,0 +1,32 @@
+{
+  "title": "Principles of Robot Autonomy",
+  "short": "PoRA",
+  "tab": "PoRA 로봇 자율성",
+  "authors": "Marco Pavone 외",
+  "org": "Stanford",
+  "license": "무료 공개 교재",
+  "color": "#2f6f6a",
+  "colorDark": "#9fd8cf",
+  "intro": "인지·상태추정·계획·제어·학습이 하나의 자율성 스택으로 어떻게 맞물리는지, 고전 로보틱스와 최신 AI를 한 프레임워크로 가르치는 교재.",
+  "announcement": {
+    "label": "Marco Pavone 공개 글 (X)",
+    "url": "https://x.com/drmapavone/status/2113282303564956047",
+    "date": "2026-10-22"
+  },
+  "links": [
+    { "icon": "📖", "label": "교재", "desc": "arXiv 전문", "url": "https://arxiv.org/abs/2608.03496" },
+    { "icon": "🎥", "label": "강의 영상", "desc": "장별 강의", "url": "https://porabook.com/lectures/" },
+    { "icon": "💻", "label": "실습", "desc": "Python · Jupyter", "url": "https://porabook.com/exercises/" },
+    { "icon": "📝", "label": "강의 자료", "desc": "슬라이드", "url": "https://porabook.com/instructors/" },
+    { "icon": "🌐", "label": "전체 자료 + Ask the Book", "desc": "AI 학습 도우미", "url": "https://porabook.com/" },
+    { "icon": "📣", "label": "스탠퍼드 발표", "desc": "Stanford Report", "url": "https://news.stanford.edu/stories/2026/10/autonomous-robotics-education-curriculum-textbook" }
+  ],
+  "checklist": [
+    { "id": "perception", "label": "인지", "en": "Perception" },
+    { "id": "state-estimation", "label": "상태 추정", "en": "State estimation" },
+    { "id": "planning", "label": "계획", "en": "Planning" },
+    { "id": "control", "label": "제어", "en": "Control" },
+    { "id": "learning", "label": "학습", "en": "Learning" },
+    { "id": "stack", "label": "통합 자율성 스택", "en": "Integrated autonomy stack" }
+  ]
+}
