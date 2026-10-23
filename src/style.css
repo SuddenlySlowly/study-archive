@@ -612,7 +612,7 @@ body[data-page="item"] .site-footer { background: var(--paper); }
 @media (max-width: 520px) { .rb-cover::after { left: -8px; right: -8px; } }
 .rb-face { position: relative; display: block; aspect-ratio: 3 / 4.2; border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--c-l); box-shadow: 6px 0 0 -1px #e9dfcc, 7px 1px 0 -1px #cdbfa6, 0 2px 4px rgba(0,0,0,0.2), 0 14px 26px rgba(0,0,0,0.3); transition: transform 0.2s ease; }
 .rb-face::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.28) 0 6px, rgba(255,255,255,0.14) 6px 7px, transparent 7px), linear-gradient(160deg, rgba(255,255,255,0.1), rgba(0,0,0,0.08)); pointer-events: none; }
-.rb:hover .rb-face { transform: translateY(-6px) rotate(-0.6deg); }
+.rb-cover:hover .rb-face { transform: translateY(-6px) rotate(-0.6deg); }
 .rb-face img { width: 100%; height: 100%; object-fit: cover; }
 .rb-blank { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 14px 14px 12px 20px; color: #fff; }
 .rb-blank b { font-size: 16px; line-height: 1.3; }
@@ -622,7 +622,15 @@ body[data-page="item"] .site-footer { background: var(--paper); }
 .rb-status.done b { font-size: 16px; color: var(--st-done); }
 .rb-bar { flex-basis: 100%; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin-bottom: 4px; }
 .rb-bar i { display: block; height: 100%; border-radius: inherit; background: var(--st-reading); }
-.rb-title { display: block; font-size: 14px; line-height: 1.4; }
+.rb-cover { display: block; }
+.rb-title { display: block; font-size: 14px; line-height: 1.4; font-weight: 700; text-decoration: none; }
+.rb-title:hover { text-decoration: underline; }
+.rb-sub { color: var(--c); font-weight: 600; }
+.rb-sub:empty { display: none; }
+.rb-detail-status { max-width: 320px; margin: 0 0 16px; }
+.rb-detail-status .rb-status { font-size: 14px; }
+.rb-detail-status .rb-status b { font-size: 26px; }
+.book-hero-cover.rb .rb-face { width: 100%; }
 .rb-meta { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.55; margin-top: 2px; }
 .hero .rb-status, .hero .rb-meta { color: rgba(255, 255, 255, 0.68); }
 .hero .rb-bar { background: rgba(255, 255, 255, 0.16); }
