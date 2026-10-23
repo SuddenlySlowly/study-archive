@@ -1081,11 +1081,11 @@ function graphView(p) {
   const links = [];
   const tagIndex = new Map();
   for (const topic of data.topics) {
-    nodes.push({ id: `t:${topic.id}`, type: "hub", label: topic.name, url: `${p}topics/${topic.id}/`, meta: `대주제 · 콘텐츠 ${itemsByTopic[topic.id].length}개` });
+    nodes.push({ id: `t:${topic.id}`, type: "hub", hue: hueOf(topic.color), label: topic.name, url: `${p}topics/${topic.id}/`, meta: `대주제 · 콘텐츠 ${itemsByTopic[topic.id].length}개` });
   }
   for (const item of data.items) {
     const topic = topicById[item.topic];
-    nodes.push({ id: `i:${item.id}`, type: "item", label: item.title, url: `${p}items/${item.id}/`, meta: `${topic.name} · ${dotDate(item.date)} · ${data.statuses[item.status].label}` });
+    nodes.push({ id: `i:${item.id}`, type: "item", hue: hueOf(topic.color), label: item.title, url: `${p}items/${item.id}/`, meta: `${topic.name} · ${dotDate(item.date)} · ${data.statuses[item.status].label}` });
     links.push([`t:${topic.id}`, `i:${item.id}`]);
     for (const tag of item.tags) {
       if (!tagIndex.has(tag)) {
@@ -1100,7 +1100,10 @@ function graphView(p) {
   const json = JSON.stringify({ nodes, links }).replace(/</g, "\\u003c");
   return `<figure class="graph" data-graph>
     <canvas class="graph-canvas" role="img" aria-label="대주제 ${data.topics.length}개, 콘텐츠 ${data.items.length}개, 태그 ${tagIndex.size}개의 연결 그래프"></canvas>
-    <div class="graph-legend" aria-hidden="true"><span><i class="g-hub"></i>대주제</span><span><i class="g-item"></i>콘텐츠</span><span><i class="g-tag"></i>태그</span></div>
+    <div class="graph-legend" aria-hidden="true">
+      <div><span><i class="g-hub"></i>대주제</span><span><i class="g-item"></i>콘텐츠</span><span><i class="g-tag"></i>태그</span></div>
+      <div class="g-topics">${data.topics.map((t) => `<span style="--h:${hueOf(t.color)}"><i class="g-topic"></i>${esc(t.name)}</span>`).join("")}</div>
+    </div>
     <div class="graph-zoom"><button type="button" data-graph-zoom="1" aria-label="확대">+</button><button type="button" data-graph-zoom="-1" aria-label="축소">−</button><button type="button" data-graph-fit aria-label="전체 보기">⤢</button></div>
     <div class="graph-info" data-graph-info hidden><small data-graph-meta></small><b data-graph-label></b><a data-graph-link href="#">페이지 열기 →</a></div>
     <figcaption class="graph-hint">점에 올리거나 누르면 이웃만 밝아집니다 · 드래그로 옮기기 · 휠/핀치로 확대 · 빈 곳 드래그로 이동 · 두 번 누르면 페이지로</figcaption>
@@ -1149,6 +1152,16 @@ function art(id) {
   if (id === "economy") return `<svg ${common}><path d="M12 58h56"/><path d="M20 58V40M32 58V28M44 58V36M56 58V18"/><path d="M16 22h18l6 8 10-12 12 8"/></svg>`;
   if (id === "agents") return `<svg ${common}><circle cx="22" cy="26" r="6"/><circle cx="54" cy="22" r="6"/><circle cx="40" cy="52" r="7"/><path d="M27 30l8 16M49 28l-6 17M28 26h20"/></svg>`;
   return `<svg ${common}><path d="M10 48c10-16 18-22 30-22s20 8 30 22"/><path d="M18 48h44"/><path d="M40 26v22"/><circle cx="40" cy="22" r="3" fill="currentColor" stroke="none"/></svg>`;
+}
+
+// 그래프 색은 사이트의 대주제 색과 같은 색조(hue)에서 채도를 낮춰 만든다
+function hueOf(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (!d) return 0;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return Math.round((h * 60 + 360) % 360);
 }
 
 function topicVars(topic) {

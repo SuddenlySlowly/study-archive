@@ -36,6 +36,7 @@
   const BASE = { hub: 7, item: 3.4, tag: 2.4 };
   const GROW = { hub: 3.6, item: 2, tag: 2 };
   for (const n of nodes) n.r = BASE[n.type] + Math.sqrt(n.deg) * GROW[n.type];
+  for (const l of links) l.hue = l.s.type === "item" ? l.s.hue : l.t.type === "item" ? l.t.hue : (l.s.hue ?? l.t.hue);
   const order = ["tag", "item", "hub"].flatMap((type) => nodes.filter((n) => n.type === type));
 
   // 같은 배치로 열리도록 고정 시드
@@ -132,7 +133,13 @@
   function readColors() {
     const css = getComputedStyle(frame);
     const v = (name) => css.getPropertyValue(name).trim();
-    C = { bg: v("--g-bg"), hub: v("--g-hub"), item: v("--g-item"), tag: v("--g-tag"), line: v("--g-line"), hi: v("--g-hi"), text: v("--g-text") };
+    C = { bg: v("--g-bg"), tag: v("--g-tag"), line: v("--g-line"), hi: v("--g-hi"), text: v("--g-text") };
+    // 대주제 색: 허브는 진하게, 콘텐츠는 같은 색조를 연하게, 강조선은 약하게
+    const hub = v("--g-hub-sl");
+    const item = v("--g-item-sl");
+    const edge = v("--g-edge-sla");
+    for (const n of nodes) n.color = n.hue == null ? C.tag : `hsl(${n.hue} ${n.type === "hub" ? hub : item})`;
+    for (const l of links) l.color = `hsl(${l.hue} ${edge})`;
   }
 
   function fit() {
@@ -200,29 +207,30 @@
     }
     ctx.stroke();
     if (focus) {
-      ctx.globalAlpha = 0.85;
-      ctx.strokeStyle = C.hi;
-      ctx.lineWidth = 1.3 / scale;
-      ctx.beginPath();
-      for (const n of focus.nb) {
-        ctx.moveTo(focus.x, focus.y);
-        ctx.lineTo(n.x, n.y);
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 1.4 / scale;
+      for (const l of links) {
+        if (l.s !== focus && l.t !== focus) continue;
+        ctx.strokeStyle = l.color;
+        ctx.beginPath();
+        ctx.moveTo(l.s.x, l.s.y);
+        ctx.lineTo(l.t.x, l.t.y);
+        ctx.stroke();
       }
-      ctx.stroke();
     }
 
     // 점
     for (const n of order) {
       const on = lit(n);
       ctx.globalAlpha = on ? 1 : 0.12;
-      ctx.fillStyle = n === focus ? C.hi : C[n.type];
+      ctx.fillStyle = n === focus && n.type === "tag" ? C.hi : n.color;
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
       ctx.fill();
       if (focus && on) {
         ctx.lineWidth = (n === focus ? 2 : 1.2) / scale;
         ctx.strokeStyle = C.hi;
-        ctx.globalAlpha = n === focus ? 0.5 : 0.8;
+        ctx.globalAlpha = n === focus ? 0.75 : 0.45;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r + (n === focus ? 3.5 : 1.5) / scale, 0, Math.PI * 2);
         ctx.stroke();
