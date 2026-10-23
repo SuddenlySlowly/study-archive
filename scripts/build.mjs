@@ -40,6 +40,7 @@ rmSync(dist, { recursive: true, force: true });
 mkdirSync(join(dist, "assets"), { recursive: true });
 cpSync(join(root, "src/style.css"), join(dist, "assets/style.css"));
 cpSync(join(root, "src/site.js"), join(dist, "assets/site.js"));
+cpSync(join(root, "src/graph.js"), join(dist, "assets/graph.js"));
 cpSync(join(root, "src/favicon.svg"), join(dist, "favicon.svg"));
 mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
@@ -52,7 +53,7 @@ const pages = [];
 const site = (rel, depth, opts) => pages.push(writePage(rel, { depth, chrome: "site", ...opts }));
 site("index.html", 0, { title: data.title, description: data.subtitle, page: "home", body: renderHome });
 site("library/index.html", 1, { title: `전체 책장 · ${data.title}`, description: "주제별 책과 장을 한 번에 봅니다.", page: "library", nav: "library", body: renderLibrary });
-site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", body: renderMap });
+site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", scripts: ["graph.js"], body: renderMap });
 site("summaries/index.html", 1, { title: `콘텐츠별 요약 · ${data.title}`, description: "콘텐츠마다 날짜·주제·핵심 요약·출처·태그·상태를 대주제별로 모았습니다.", page: "summaries", nav: "summaries", body: renderSummaries });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
 site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
@@ -119,7 +120,7 @@ function writePage(rel, opts) {
   return rel;
 }
 
-function page({ title, description, depth, body, page: pageName, path, absolute, chrome, nav, item, tab = "study" }) {
+function page({ title, description, depth, body, page: pageName, path, absolute, chrome, nav, item, tab = "study", scripts = [] }) {
   const prefix = absolute ? "/study-archive/" : depth ? "../".repeat(depth) : "";
   const canonPath = path === "index.html" || !path ? "/" : `/${path.replace(/index\.html$/, "")}`;
   const topic = item ? topicById[item.topic] : null;
@@ -150,7 +151,8 @@ ${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? reading
 ${body(prefix)}
 ${footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
-<script src="${prefix}assets/site.js" defer></script>
+<script src="${prefix}assets/site.js" defer></script>${scripts.map((name) => `
+<script src="${prefix}assets/${name}" defer></script>`).join("")}
 </body>
 </html>
 `;
@@ -538,8 +540,8 @@ function renderMap(p) {
   return `<main id="content" class="cream">
   <section class="band"><div class="wrap">
     <p class="kicker">지식 지도</p><h1 class="sec-title big">주제와 태그, 장의 연결</h1>
-    <p class="sub">가운데 원이 책(주제), 둘레의 점이 장입니다. 점이 클수록 그림이 많은 장입니다. 점을 누르면 그 장으로 갑니다.</p>
-    <figure class="card-panel map-fig">${orbitMap(p)}</figure>
+    <p class="sub">큰 점이 대주제, 그 둘레가 콘텐츠, 작은 점이 태그입니다. 태그가 서로 다른 콘텐츠를 잇습니다. 점 크기는 연결 수에 비례합니다.</p>
+    ${graphView(p)}
   </div></section>
   <section class="band alt"><div class="wrap">
     <p class="kicker">태그</p><h2 class="sec-title">태그별로 찾아보기</h2><p class="sub">태그는 각 장에 붙은 그대로입니다. 숫자는 그 태그가 붙은 장의 수입니다.</p>
@@ -1074,29 +1076,36 @@ function tagCloud(items, p) {
   }).join("")}</div>`;
 }
 
-function orbitMap(p) {
-  const W = 960;
-  const H = 560;
-  const centers = { "ai-education": [140, 140], economy: [490, 280], agents: [835, 170], security: [150, 420] };
-  const spare = [[835, 440], [150, 280]];
-  const radii = data.topics.map((t) => 60 + Math.sqrt(itemsByTopic[t.id].length) * 38);
-  const parts = [];
-  data.topics.forEach((t, ti) => {
-    const [cx, cy] = centers[t.id] || spare[ti % spare.length];
-    const items = itemsByTopic[t.id];
-    const r = radii[ti];
-    parts.push(`<g style="${topicVars(t)}"><circle class="orbit" cx="${cx}" cy="${cy}" r="${r}"/>`);
-    items.forEach((item, i) => {
-      const ang = -Math.PI / 2 + (i / items.length) * Math.PI * 2;
-      const x = cx + Math.cos(ang) * r;
-      const y = cy + Math.sin(ang) * r;
-      const size = 5 + item.visuals.length * 1.6;
-      parts.push(`<line class="spoke" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/><a href="${p}items/${item.id}/"><circle class="node st-${item.status}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${size.toFixed(1)}" data-tip="${esc(`${t.name} ${chapterNo[item.id]}장 · ${item.title} (그림 ${item.visuals.length}개)`)}"><title>${esc(item.title)}</title></circle></a>`);
-    });
-    parts.push(`<a href="${p}topics/${t.id}/"><circle class="hub" cx="${cx}" cy="${cy}" r="44"/><text class="hub-t" x="${cx}" y="${cy - 2}" text-anchor="middle">${esc(t.name)}</text><text class="hub-n" x="${cx}" y="${cy + 16}" text-anchor="middle">${items.length}장</text></a></g>`);
-  });
-  const legend = `<div class="legend static">${Object.entries(data.statuses).map(([id, s]) => `<span><i class="dot st-${id}"></i>${esc(s.mark)} ${esc(s.label)}</span>`).join("")}<span>점 크기 = 그림 수</span></div>`;
-  return `${legend}<div class="map-scroll"><svg class="chart orbit-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="주제별 장 지도">${parts.join("")}</svg></div>
+function graphView(p) {
+  const nodes = [];
+  const links = [];
+  const tagIndex = new Map();
+  for (const topic of data.topics) {
+    nodes.push({ id: `t:${topic.id}`, type: "hub", label: topic.name, url: `${p}topics/${topic.id}/`, meta: `대주제 · 콘텐츠 ${itemsByTopic[topic.id].length}개` });
+  }
+  for (const item of data.items) {
+    const topic = topicById[item.topic];
+    nodes.push({ id: `i:${item.id}`, type: "item", label: item.title, url: `${p}items/${item.id}/`, meta: `${topic.name} · ${dotDate(item.date)} · ${data.statuses[item.status].label}` });
+    links.push([`t:${topic.id}`, `i:${item.id}`]);
+    for (const tag of item.tags) {
+      if (!tagIndex.has(tag)) {
+        tagIndex.set(tag, 0);
+        nodes.push({ id: `g:${tag}`, type: "tag", label: `#${tag}`, url: `#${tagId(tag)}`, anchor: tagId(tag) });
+      }
+      tagIndex.set(tag, tagIndex.get(tag) + 1);
+      links.push([`i:${item.id}`, `g:${tag}`]);
+    }
+  }
+  for (const node of nodes) if (node.type === "tag") node.meta = `태그 · 콘텐츠 ${tagIndex.get(node.label.slice(1))}개`;
+  const json = JSON.stringify({ nodes, links }).replace(/</g, "\\u003c");
+  return `<figure class="graph" data-graph>
+    <canvas class="graph-canvas" role="img" aria-label="대주제 ${data.topics.length}개, 콘텐츠 ${data.items.length}개, 태그 ${tagIndex.size}개의 연결 그래프"></canvas>
+    <div class="graph-legend" aria-hidden="true"><span><i class="g-hub"></i>대주제</span><span><i class="g-item"></i>콘텐츠</span><span><i class="g-tag"></i>태그</span></div>
+    <div class="graph-zoom"><button type="button" data-graph-zoom="1" aria-label="확대">+</button><button type="button" data-graph-zoom="-1" aria-label="축소">−</button><button type="button" data-graph-fit aria-label="전체 보기">⤢</button></div>
+    <div class="graph-info" data-graph-info hidden><small data-graph-meta></small><b data-graph-label></b><a data-graph-link href="#">페이지 열기 →</a></div>
+    <figcaption class="graph-hint">점에 올리거나 누르면 이웃만 밝아집니다 · 드래그로 옮기기 · 휠/핀치로 확대 · 빈 곳 드래그로 이동 · 두 번 누르면 페이지로</figcaption>
+    <script type="application/json" data-graph-data>${json}</script>
+  </figure>
   <details class="tbl"><summary>목록으로 보기</summary><ul class="plain">${data.topics.map((t) => `<li><b>${esc(t.name)}</b>: ${itemsByTopic[t.id].map((item) => `<a href="${p}items/${item.id}/">${esc(item.title)}</a>`).join(", ")}</li>`).join("")}</ul></details>`;
 }
 

@@ -429,20 +429,31 @@ body[data-page="item"] .site-footer { background: var(--paper); }
 .chart .val.muted { fill: var(--muted); font-weight: 500; }
 .hide-s0 [data-s="0"], .hide-s1 [data-s="1"], .hide-s2 [data-s="2"] { opacity: 0.08; }
 
-/* map */
-.map-fig { padding: 18px; }
-.map-scroll { overflow-x: auto; }
-.orbit-map { min-width: 680px; width: 100%; height: auto; }
-.orbit-map .orbit { fill: none; stroke: var(--c); stroke-opacity: 0.35; stroke-dasharray: 4 5; }
-.orbit-map .spoke { stroke: var(--c); stroke-opacity: 0.18; }
-.orbit-map .hub { fill: var(--c-l); stroke: var(--card); stroke-width: 4; }
-.orbit-map .hub-t { fill: #fff; font-weight: 800; font-size: 14px; }
-.orbit-map .hub-n { fill: rgba(255, 255, 255, 0.8); font-size: 12px; }
-.orbit-map .node { stroke: var(--card); stroke-width: 2.5; transition: transform 0.15s; transform-box: fill-box; transform-origin: center; }
-.orbit-map .node.st-reading { fill: var(--st-reading); }
-.orbit-map .node.st-todo { fill: var(--st-todo); }
-.orbit-map .node.st-done { fill: var(--st-done); }
-.orbit-map a:hover .node { transform: scale(1.35); }
+/* map: graph view (achromatic only) */
+:root { --g-bg: #e9e9e9; --g-hub: #111111; --g-item: #6e6e6e; --g-tag: #ababab; --g-line: rgba(0, 0, 0, 0.16); --g-hi: #000000; --g-text: #1a1a1a; --g-panel: rgba(250, 250, 250, 0.9); --g-border: rgba(0, 0, 0, 0.12); }
+:root[data-theme="dark"] { --g-bg: #1e1e1e; --g-hub: #f2f2f2; --g-item: #9a9a9a; --g-tag: #5c5c5c; --g-line: rgba(255, 255, 255, 0.14); --g-hi: #ffffff; --g-text: #e6e6e6; --g-panel: rgba(36, 36, 36, 0.9); --g-border: rgba(255, 255, 255, 0.12); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g-bg: #1e1e1e; --g-hub: #f2f2f2; --g-item: #9a9a9a; --g-tag: #5c5c5c; --g-line: rgba(255, 255, 255, 0.14); --g-hi: #ffffff; --g-text: #e6e6e6; --g-panel: rgba(36, 36, 36, 0.9); --g-border: rgba(255, 255, 255, 0.12); } }
+.graph { position: relative; margin: 0 0 12px; height: min(76vh, 720px); min-height: 420px; border-radius: 14px; overflow: hidden; background: var(--g-bg); border: 1px solid var(--g-border); color: var(--g-text); box-shadow: var(--shadow); }
+.graph-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.graph-canvas.is-panning, .graph-canvas.is-dragging { cursor: grabbing; }
+.graph-canvas.is-over { cursor: pointer; }
+.graph-legend { position: absolute; left: 12px; top: 12px; display: flex; gap: 12px; padding: 6px 10px; border-radius: 9px; background: var(--g-panel); border: 1px solid var(--g-border); font-size: 12px; pointer-events: none; }
+.graph-legend span { display: flex; align-items: center; gap: 6px; }
+.graph-legend i { width: 10px; height: 10px; border-radius: 50%; }
+.graph-legend .g-hub { background: var(--g-hub); width: 13px; height: 13px; }
+.graph-legend .g-item { background: var(--g-item); }
+.graph-legend .g-tag { background: var(--g-tag); width: 8px; height: 8px; }
+.graph-zoom { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; border-radius: 9px; overflow: hidden; background: var(--g-panel); border: 1px solid var(--g-border); }
+.graph-zoom button { width: 34px; height: 34px; border: 0; background: none; color: var(--g-text); font-size: 18px; line-height: 1; }
+.graph-zoom button + button { border-top: 1px solid var(--g-border); }
+.graph-zoom button:hover { background: var(--g-border); }
+.graph-info { position: absolute; left: 12px; bottom: 40px; max-width: min(360px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 11px; background: var(--g-panel); border: 1px solid var(--g-border); backdrop-filter: blur(6px); }
+.graph-info[hidden] { display: none; }
+.graph-info small { font-size: 12px; opacity: 0.7; }
+.graph-info b { font-size: 15px; line-height: 1.4; }
+.graph-info a { font-size: 13px; font-weight: 700; color: var(--g-hi); }
+.graph-hint { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px; font-size: 12px; opacity: 0.6; pointer-events: none; text-align: center; }
+@media (max-width: 720px) { .graph { height: 66vh; min-height: 380px; } .graph-hint { font-size: 11px; } }
 .clusters { columns: 1; column-gap: 16px; }
 @media (min-width: 900px) { .clusters { columns: 2; } }
 .cluster { break-inside: avoid; margin-bottom: 16px; }
