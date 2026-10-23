@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync, cpSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, cpSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,15 @@ const REPO = "https://github.com/SuddenlySlowly/study-archive";
 const topicById = Object.fromEntries(data.topics.map((topic) => [topic.id, topic]));
 const itemsByTopic = Object.fromEntries(data.topics.map((topic) => [topic.id, []]));
 for (const item of data.items) itemsByTopic[item.topic].push(item);
+const reading = JSON.parse(readFileSync(join(root, "data/reading.json"), "utf8"));
+validateReading(reading);
+const SHELF_META = {
+  문학: { id: "literature", en: "Literature", color: "#2f5f8f", colorDark: "#a3c8f0", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
+  비문학: { id: "nonfiction", en: "Non-fiction", color: "#5b4a8e", colorDark: "#c9bdf5", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
+  미분류: { id: "uncategorized", en: "Unsorted", color: "#6b6258", colorDark: "#d4cbbf", blurb: "아직 분류를 정하지 않은 책입니다." },
+};
+const shelves = readingShelves(reading.books);
+const shelfByName = Object.fromEntries(shelves.map((shelf) => [shelf.name, shelf]));
 const chapterNo = Object.fromEntries(data.items.map((item) => [item.id, itemsByTopic[item.topic].indexOf(item) + 1]));
 const CHART_TYPES = new Set(["grouped-bar", "bars", "range", "meter"]);
 const ICON = {
@@ -34,6 +43,8 @@ cpSync(join(root, "src/site.js"), join(dist, "assets/site.js"));
 cpSync(join(root, "src/favicon.svg"), join(dist, "favicon.svg"));
 mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
+cpSync(join(root, "data/reading.json"), join(dist, "data/reading.json"));
+cpSync(join(root, "src/covers"), join(dist, "covers"), { recursive: true });
 writeFileSync(join(dist, ".nojekyll"), "");
 writeFileSync(join(dist, "assets/search.json"), JSON.stringify(searchIndex()));
 
@@ -44,6 +55,13 @@ site("library/index.html", 1, { title: `전체 책장 · ${data.title}`, descrip
 site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", body: renderMap });
 site("figures/index.html", 1, { title: `숫자 모음 · ${data.title}`, description: "메모 문장에 적힌 수치와 차트를 모았습니다.", page: "figures", nav: "figures", body: renderFigures });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
+site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", nav: "reading", body: renderReading });
+for (const shelf of shelves) {
+  site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", nav: "reading", body: (p) => renderShelf(shelf, p) });
+}
+for (const book of reading.books) {
+  site(`reading/books/${book.id}/index.html`, 3, { title: `${book.title} · 독서 기록`, description: `${book.author}${book.publisher ? ` · ${book.publisher}` : ""}`, page: "reading-book", nav: "reading", body: (p) => renderBook(book, p) });
+}
 for (const topic of data.topics) {
   site(`topics/${topic.id}/index.html`, 2, { title: `${topic.name} · ${data.title}`, description: topic.blurb, page: "topic", body: (p) => renderTopic(topic, p) });
 }
@@ -65,7 +83,7 @@ writeFileSync(join(dist, "404.html"), page({
   title: `없는 페이지 · ${data.title}`,
   description: data.subtitle,
   page: "missing",
-  body: (p) => `<main id="content" class="cream"><section class="wrap missing"><p class="kicker">404</p><h1>이 주소에는 페이지가 없습니다.</h1><p class="sub">책장에서 다시 찾아보세요.</p><p><a class="btn" href="${p}">공부 아카이브로 돌아가기 →</a> <a class="btn ghost" href="${p}library/">전체 책장 →</a></p></section></main>`,
+  body: (p) => `<main id="content" class="cream"><section class="wrap missing"><p class="kicker">404</p><h1>이 주소에는 페이지가 없습니다.</h1><p class="sub">책장에서 다시 찾아보세요.</p><p><a class="btn" href="${p}">공부 아카이브로 돌아가기 →</a> <a class="btn ghost" href="${p}library/">전체 책장 →</a> <a class="btn ghost" href="${p}reading/">독서 기록 →</a></p></section></main>`,
 }));
 writeFileSync(join(dist, "robots.txt"), "User-agent: *\nAllow: /\n");
 writeFileSync(join(dist, "sitemap.xml"), sitemap(pages));
@@ -135,6 +153,7 @@ function siteHeader(prefix, nav) {
     ["map", "지식 지도"],
     ["figures", "숫자 모음"],
     ["timeline", "연표"],
+    ["reading", "독서 기록"],
   ].map(([id, label]) => `<a href="${prefix}${id}/"${id === nav ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   return `<header class="topbar">
   <div class="topbar-in">
@@ -174,7 +193,7 @@ function readerHeader(prefix, item) {
 function footer(prefix) {
   return `<footer class="site-footer"><div class="wrap foot-in">
   <p>© 공부 아카이브 · 수치는 각 메모에 적힌 문장에서만 그렸습니다.</p>
-  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}figures/">숫자 모음</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}figures/">숫자 모음</a><a href="${prefix}timeline/">연표</a><a href="${prefix}reading/">독서 기록</a><a href="${prefix}data/archive.json">archive.json</a><a href="${prefix}data/reading.json">reading.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
 </div></footer>`;
 }
 
@@ -196,12 +215,14 @@ function renderHome(p) {
         <div class="hero-side">
           <p>${esc(data.subtitle)}</p>
           <p class="hero-legend">${esc(data.statusLegend)}</p>
-          <a class="hero-link" href="library/">전체 책장 둘러보기 →</a>
+          <p class="hero-links"><a class="hero-link" href="library/">전체 책장 둘러보기 →</a><a class="hero-link" href="reading/">독서 기록 둘러보기 →</a></p>
         </div>
       </div>
       <nav class="hero-pills" aria-label="주제">${data.topics.map((t) => `<a href="topics/${t.id}/">${esc(t.name)} <span>${itemsByTopic[t.id].length}</span> →</a>`).join("")}</nav>
       <div class="shelf-head"><h2>처음 펼치기 좋은 책</h2><a href="library/">전체 ${data.topics.length}권 보기 →</a></div>
       <div class="shelf"><div class="shelf-row books-${data.topics.length}">${data.topics.map((t) => bookCover(t, "")).join("")}</div></div>
+      <div class="shelf-head"><h2>독서 기록 책장</h2><a href="reading/">독서 기록 ${reading.books.length}권 보기 →</a></div>
+      <div class="shelf"><div class="shelf-row books-few" style="--n:${shelves.length}">${shelves.map((shelf) => shelfCover(shelf, "")).join("")}</div></div>
       <div class="shelf-head"><h2>최근 추가된 장</h2><a href="timeline/">연표로 보기 →</a></div>
       <div class="shelf"><div class="shelf-row">${recent.map((item) => chapterCover(item, "")).join("")}</div></div>
     </div>
@@ -520,6 +541,222 @@ function renderTimeline(p) {
     }).join("")}</ol>
   </div></section>
 </main>`;
+}
+
+/* ---------- reading log ---------- */
+
+function renderReading(p) {
+  const now = reading.books.filter((book) => book.status === "reading");
+  const done = reading.books.filter((book) => book.status === "done");
+  const pages = reading.books.reduce((n, book) => n + readingProgress(book).page, 0);
+  const days = new Set(reading.logs.map((log) => log.date)).size;
+  const recent = sortedLogs().reverse().slice(0, 8);
+  return `<main id="content">
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="hero-kicker">READING LOG · 독서 기록</p>
+          <h1>읽은 책마다,<br><em>꽂아 둘 자리가 있습니다.</em></h1>
+          <p class="hero-small">마지막 기록 ${esc(dotDate(reading.updatedAt.slice(0, 10)))} · 책장 ${shelves.length}칸 ${reading.books.length}권</p>
+        </div>
+        <div class="hero-side">
+          <p>분류별 책장에 읽는 중인 책과 다 읽은 책을 꽂아 둡니다. 읽는 중이면 진행률을, 다 읽었으면 완독한 달을 표지 밑에 적습니다.</p>
+          <p class="hero-links"><a class="hero-link" href="${p}library/">공부 아카이브 책장으로 →</a></p>
+        </div>
+      </div>
+      <nav class="hero-pills" aria-label="독서 분류">${shelves.map((shelf) => `<a href="${p}reading/${shelf.id}/">${esc(shelf.name)} <span>${shelf.books.length}</span> →</a>`).join("")}</nav>
+      <div class="shelf-head"><h2>분류별 책장</h2><a href="${p}">공부 아카이브 홈 →</a></div>
+      <div class="shelf"><div class="shelf-row books-few" style="--n:${shelves.length}">${shelves.map((shelf) => shelfCover(shelf, p)).join("")}</div></div>
+      <div class="shelf-head"><h2>지금 읽는 책</h2><span class="shelf-note">${now.length}권</span></div>
+      ${now.length ? `<div class="rb-grid">${now.map((book) => readingBook(book, p, true)).join("")}</div>` : `<p class="hero-small">지금 읽는 책이 없습니다.</p>`}
+    </div>
+  </section>
+
+  <section class="cream band">
+    <div class="wrap">
+      <p class="kicker">한눈에 보기</p>
+      <h2 class="sec-title">독서 기록의 모양</h2>
+      <p class="sub">책마다 마지막으로 적은 쪽수와 기록한 날을 셌습니다.</p>
+      <div class="kpis">
+        <div><b>${reading.books.length}</b><span>권</span></div>
+        <div><b>${now.length}</b><span>📖 읽는 중</span></div>
+        <div><b>${done.length}</b><span>✅ 완독</span></div>
+        <div><b>${pages.toLocaleString("ko-KR")}</b><span>읽은 쪽</span></div>
+        <div><b>${days}</b><span>기록한 날</span></div>
+      </div>
+      ${recent.length ? `<figure class="card-panel"><div class="fig-title">최근 기록</div><ol class="rlog">${recent.map(({ log, gained }) => {
+        const book = reading.books.find((b) => b.id === log.bookId);
+        const shelf = shelfOf(book);
+        const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
+        return `<li style="${topicVars(shelf)}"><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time><a href="${p}reading/books/${esc(book.id)}/">${esc(book.title)}</a><span>${esc(what)}${log.to != null ? ` <b>+${gained}쪽</b>` : ""}${log.minutes ? ` · ${log.minutes}분` : ""}</span></li>`;
+      }).join("")}</ol></figure>` : ""}
+    </div>
+  </section>
+</main>`;
+}
+
+function renderShelf(shelf, p) {
+  const now = shelf.books.filter((book) => book.status === "reading").length;
+  const done = shelf.books.length - now;
+  const tabs = shelves.map((s) => `<a href="${p}reading/${s.id}/"${s.id === shelf.id ? ' aria-current="page"' : ""}>${esc(s.name)} <span>${s.books.length}</span></a>`).join("");
+  return `<main id="content" class="cream" style="${topicVars(shelf)}">
+  <section class="book-hero">
+    <div class="wrap book-hero-grid">
+      <div class="book-hero-cover">${shelfCover(shelf, p, true)}</div>
+      <div>
+        <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}reading/">독서 기록</a><span aria-hidden="true">/</span><span>${esc(shelf.name)}</span></nav>
+        <p class="kicker">${esc(shelf.en)}</p>
+        <h1>${esc(shelf.name)} 책장</h1>
+        <p class="lede">${esc(shelf.blurb)}</p>
+        <dl class="book-facts">
+          <div><dt>권</dt><dd>${shelf.books.length}</dd></div>
+          <div><dt>📖 읽는 중</dt><dd>${now}</dd></div>
+          <div><dt>✅ 완독</dt><dd>${done}</dd></div>
+        </dl>
+        <nav class="lib-tabs shelf-tabs" aria-label="다른 책장"><a href="${p}reading/">← 독서 기록</a>${tabs}</nav>
+      </div>
+    </div>
+  </section>
+  <section class="band">
+    <div class="wrap">
+      <p class="kicker">꽂힌 책</p>
+      <h2 class="sec-title">${esc(shelf.name)} ${shelf.books.length}권</h2>
+      <p class="sub">읽는 중인 책은 마지막으로 적은 쪽수로 진행률을, 다 읽은 책은 완독한 달을 표지 밑에 적었습니다.</p>
+      ${shelf.books.length ? `<div class="rb-grid">${shelf.books.map((book) => readingBook(book, p)).join("")}</div>` : `<p class="empty">아직 이 책장에 꽂힌 책이 없습니다.</p>`}
+    </div>
+  </section>
+</main>`;
+}
+
+function renderBook(book, p) {
+  const shelf = shelfOf(book);
+  const logs = sortedLogs().filter(({ log }) => log.bookId === book.id).reverse();
+  const facts = [
+    ["분류", book.subcategory ? `${book.category} · ${book.subcategory.split(">").at(-1).trim()}` : book.category],
+    ["출판사", book.publisher],
+    ["출간일", book.pubDate && dotDate(book.pubDate)],
+    ["쪽수", book.pages && `${book.pages}쪽`],
+    ["ISBN", book.isbn],
+    ["읽기 시작", book.startDate && dotDate(book.startDate)],
+    ["완독", book.endDate && dotDate(book.endDate)],
+  ].filter(([, v]) => v);
+  return `<main id="content" class="cream" style="${topicVars(shelf)}">
+  <section class="book-hero">
+    <div class="wrap book-hero-grid">
+      <div class="book-hero-cover rb">${coverFace(book, p)}</div>
+      <div>
+        <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}reading/">독서 기록</a><span aria-hidden="true">/</span><a href="${p}reading/${shelf.id}/">${esc(shelf.name)}</a><span aria-hidden="true">/</span><span>${esc(book.title)}</span></nav>
+        <p class="kicker">${esc(book.subcategory || book.category)}</p>
+        <h1>${esc(book.title)}</h1>
+        <p class="lede">${esc(book.author)}${book.memo ? ` · ${esc(book.memo)}` : ""}</p>
+        <div class="rb-detail-status">${readingStatus(book)}</div>
+        <dl class="book-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <p>${book.kyoboUrl ? `<a class="btn" href="${esc(book.kyoboUrl)}" target="_blank" rel="noopener noreferrer">교보문고에서 보기 ↗</a> ` : ""}<a class="btn ghost" href="${p}reading/${shelf.id}/">${esc(shelf.name)} 책장 →</a></p>
+      </div>
+    </div>
+  </section>
+  <section class="band">
+    <div class="wrap">
+      <p class="kicker">읽은 기록</p>
+      <h2 class="sec-title">쪽수 기록 ${logs.length}개</h2>
+      ${logs.length ? `<figure class="card-panel"><ol class="rlog">${logs.map(({ log, gained }) => {
+        const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
+        return `<li><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time><span>${log.note ? esc(log.note) : ""}</span><span>${esc(what)}${log.to != null ? ` <b>+${gained}쪽</b>` : ""}${log.minutes ? ` · ${log.minutes}분` : ""}</span></li>`;
+      }).join("")}</ol></figure>` : `<p class="empty">아직 기록이 없습니다.</p>`}
+    </div>
+  </section>
+</main>`;
+}
+
+function coverFace(book, p) {
+  const face = book.cover
+    ? `<img src="${p}${esc(book.cover)}" alt="${esc(book.title)} 표지" loading="lazy">`
+    : `<span class="rb-blank"><b>${esc(book.title)}</b><small>${esc(book.author)}</small></span>`;
+  return `<span class="rb-face">${face}</span>`;
+}
+
+function shelfCover(shelf, p, big = false) {
+  return `<a class="book${big ? " big" : ""}" href="${p}reading/${shelf.id}/" style="${topicVars(shelf)}" aria-label="${esc(shelf.name)} 책장 열기">
+    <span class="book-label">${esc(shelf.en)}</span>
+    <span class="book-title">${esc(shelf.name)}</span>
+    <span class="book-art" aria-hidden="true">${shelfArt(shelf.id)}</span>
+    <span class="book-foot"><span>ReadingLog</span><em>${shelf.books.length}권</em></span>
+  </a>`;
+}
+
+function readingBook(book, p, onHero = false) {
+  const shelf = shelfOf(book);
+  const href = `${p}reading/books/${book.id}/`;
+  const pub = [book.publisher, book.pubDate && dotDate(book.pubDate), book.pages && `${book.pages}쪽`].filter(Boolean);
+  return `<article class="rb" id="${esc(book.id)}" style="${topicVars(shelf)}">
+    <a class="rb-cover" href="${href}" aria-label="${esc(book.title)} 자세히 보기">${coverFace(book, p)}</a>
+    ${readingStatus(book)}
+    <a class="rb-title" href="${href}">${esc(book.title)}</a>
+    <small class="rb-meta">${esc(book.author)}${book.memo ? ` · ${esc(book.memo)}` : ""}</small>
+    ${pub.length ? `<small class="rb-meta">${pub.map(esc).join(" · ")}</small>` : ""}
+    <small class="rb-meta rb-sub">${esc(onHero ? shelf.name : "")}${book.subcategory ? `${onHero ? " · " : ""}${esc(book.subcategory.split(">").at(-1).trim())}` : ""}</small>
+  </article>`;
+}
+
+function readingStatus(book) {
+  if (book.status === "done") {
+    const when = book.endDate ? `${book.endDate.slice(0, 4)}년 ${Number(book.endDate.slice(5, 7))}월` : "완독";
+    const stars = book.rating ? ` · ${"★".repeat(book.rating)}` : "";
+    return `<p class="rb-status done"><b>${esc(when)}</b><span>✅ 완독${esc(stars)}</span></p>`;
+  }
+  const { page, pct } = readingProgress(book);
+  return `<p class="rb-status reading"><span class="rb-bar" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span><b>${pct}%</b><span>📖 읽는 중 · ${page}/${book.totalPages}쪽</span></p>`;
+}
+
+// 진행률은 이 책의 가장 최근 쪽수 기록(날짜, 같은 날이면 기록 시각 순) 기준
+function readingProgress(book) {
+  if (book.status === "done") return { page: book.totalPages, pct: 100 };
+  const last = sortedLogs().map(({ log }) => log).filter((log) => log.bookId === book.id && log.to != null).at(-1);
+  const page = Math.min(last ? last.to : 0, book.totalPages);
+  return { page, pct: Math.round((page / book.totalPages) * 100) };
+}
+
+function sortedLogs() {
+  const sorted = [...reading.logs].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.created || 0) - (b.created || 0)));
+  const cur = {};
+  return sorted.map((log) => {
+    const prev = cur[log.bookId] || 0;
+    if (log.to == null) return { log, gained: 0 };
+    const gained = log.mode === "range" ? Math.max(0, log.to - log.from + 1) : Math.max(0, log.to - prev);
+    cur[log.bookId] = Math.max(prev, log.to);
+    return { log, gained };
+  });
+}
+
+function readingShelves(books) {
+  const names = Object.keys(SHELF_META).filter((name) => SHELF_META[name].always);
+  for (const book of books) if (!names.includes(book.category)) names.push(book.category);
+  let extra = 0;
+  return names.map((name) => {
+    const meta = SHELF_META[name] || { id: `shelf-${++extra}`, en: "Shelf", color: "#3f6b4f", colorDark: "#a8d8b6", blurb: `${name}으로 분류한 책입니다.` };
+    const list = books.filter((book) => book.category === name).sort(byReadingOrder);
+    return { ...meta, name, books: list };
+  });
+}
+
+// 읽는 중인 책 먼저(최근 시작 순), 다음 완독한 책(최근 완독 순)
+function byReadingOrder(a, b) {
+  if (a.status !== b.status) return a.status === "reading" ? -1 : 1;
+  const ka = a.status === "done" ? a.endDate : a.startDate;
+  const kb = b.status === "done" ? b.endDate : b.startDate;
+  return ka < kb ? 1 : ka > kb ? -1 : 0;
+}
+
+function shelfOf(book) {
+  return shelfByName[book.category];
+}
+
+function shelfArt(id) {
+  const common = `viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`;
+  if (id === "literature") return `<svg ${common}><path d="M58 14C40 18 28 32 24 56l-6 10"/><path d="M58 14c-2 14-10 26-24 32"/><path d="M30 40h12M27 48h8"/></svg>`;
+  if (id === "nonfiction") return `<svg ${common}><circle cx="40" cy="40" r="24"/><path d="M16 40h48M40 16c-8 7-11 15-11 24s3 17 11 24M40 16c8 7 11 15 11 24s-3 17-11 24"/></svg>`;
+  return `<svg ${common}><rect x="14" y="20" width="12" height="42" rx="2"/><rect x="29" y="14" width="12" height="48" rx="2"/><path d="M46 22l11-3 10 40-11 3z"/><path d="M10 64h60"/></svg>`;
 }
 
 /* ---------- covers ---------- */
@@ -928,6 +1165,7 @@ function searchIndex() {
   return [
     ...data.topics.map((t) => ({ k: "책", t: t.name, s: t.blurb, g: [t.en], u: `topics/${t.id}/`, c: t.color })),
     ...data.items.map((item) => ({ k: `${topicById[item.topic].name} · 제${chapterNo[item.id]}장`, t: item.title, s: item.summary, g: item.tags, d: item.date, u: `items/${item.id}/`, c: topicById[item.topic].color })),
+    ...reading.books.map((book) => ({ k: `독서 기록 · ${book.category}`, t: book.title, s: `${book.author} ${book.memo || ""} ${book.publisher || ""}`, g: [book.category, book.subcategory, book.author, book.isbn].filter(Boolean), u: `reading/books/${book.id}/`, c: shelfOf(book).color })),
   ];
 }
 
@@ -1015,5 +1253,26 @@ function validate(archive) {
     if (rows.length !== topic.overviewCount) throw new Error(`${topic.name} count`);
     const latest = rows.map((row) => row.date).sort().at(-1);
     if (latest !== topic.overviewLatest) throw new Error(`${topic.name} latest`);
+  }
+}
+
+function validateReading(log) {
+  const ids = new Set();
+  for (const book of log.books) {
+    if (ids.has(book.id)) throw new Error(`reading: duplicate book ${book.id}`);
+    ids.add(book.id);
+    book.category = String(book.category || "").trim() || "미분류";
+    if (book.status !== "reading" && book.status !== "done") throw new Error(`reading: ${book.id} status ${book.status}`);
+    if (!(Number(book.totalPages) > 0)) throw new Error(`reading: ${book.id} totalPages`);
+    for (const key of ["startDate", "endDate", "pubDate"]) {
+      if (book[key] && !/^\d{4}-\d{2}-\d{2}$/.test(book[key])) throw new Error(`reading: ${book.id} ${key} ${book[key]}`);
+    }
+    if (book.pages != null && Number(book.pages) !== Number(book.totalPages)) throw new Error(`reading: ${book.id} pages ${book.pages} != totalPages ${book.totalPages}`);
+    if (book.isbn && !/^97[89]\d{10}$/.test(book.isbn)) throw new Error(`reading: ${book.id} isbn ${book.isbn}`);
+    if (book.kyoboUrl && !book.kyoboUrl.startsWith("https://product.kyobobook.co.kr/detail/")) throw new Error(`reading: ${book.id} kyoboUrl ${book.kyoboUrl}`);
+    if (book.cover && (!/^covers\/[\w.-]+$/.test(book.cover) || !existsSync(join(root, "src", book.cover)))) throw new Error(`reading: ${book.id} cover missing ${book.cover}`);
+  }
+  for (const entry of log.logs) {
+    if (!ids.has(entry.bookId)) throw new Error(`reading: log ${entry.id} unknown book ${entry.bookId}`);
   }
 }
