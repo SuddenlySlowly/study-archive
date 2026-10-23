@@ -66,6 +66,42 @@
     document.addEventListener("click", (ev) => { if (!form.contains(ev.target)) close(); });
   });
 
+  /* summaries: topic chips + search, kept in ?topic=&q= */
+  const sumChips = [...document.querySelectorAll("[data-sum-topic]")];
+  if (sumChips.length) {
+    const input = document.querySelector("[data-sum-search]");
+    const secs = [...document.querySelectorAll("[data-sum-sec]")];
+    const count = document.querySelector("[data-sum-count]");
+    const empty = document.querySelector("[data-sum-empty]");
+    const params = new URLSearchParams(location.search);
+    let topic = params.get("topic") || "all";
+    if (!sumChips.some((c) => c.dataset.sumTopic === topic)) topic = "all";
+    input.value = params.get("q") || "";
+    const apply = () => {
+      const q = fold(input.value);
+      sumChips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.sumTopic === topic)));
+      let shown = 0;
+      secs.forEach((sec) => {
+        let n = 0;
+        sec.querySelectorAll("[data-sum-find]").forEach((card) => {
+          card.hidden = Boolean(q) && !fold(card.dataset.sumFind).includes(q);
+          if (!card.hidden) n += 1;
+        });
+        sec.hidden = (topic !== "all" && sec.dataset.sumSec !== topic) || n === 0;
+        if (!sec.hidden) shown += n;
+      });
+      count.textContent = `${shown}개 콘텐츠${q || topic !== "all" ? " · 필터 적용" : ""}`;
+      empty.hidden = shown > 0;
+      const next = new URLSearchParams();
+      if (topic !== "all") next.set("topic", topic);
+      if (input.value.trim()) next.set("q", input.value.trim());
+      history.replaceState(null, "", `${location.pathname}${next.toString() ? `?${next}` : ""}${location.hash}`);
+    };
+    sumChips.forEach((c) => c.addEventListener("click", () => { topic = c.dataset.sumTopic; apply(); }));
+    input.addEventListener("input", apply);
+    apply();
+  }
+
   /* library tabs + ?q= filter */
   const tabs = [...document.querySelectorAll("[data-shelf-tab]")];
   if (tabs.length) {

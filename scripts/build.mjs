@@ -53,7 +53,7 @@ const site = (rel, depth, opts) => pages.push(writePage(rel, { depth, chrome: "s
 site("index.html", 0, { title: data.title, description: data.subtitle, page: "home", body: renderHome });
 site("library/index.html", 1, { title: `전체 책장 · ${data.title}`, description: "주제별 책과 장을 한 번에 봅니다.", page: "library", nav: "library", body: renderLibrary });
 site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", body: renderMap });
-site("figures/index.html", 1, { title: `숫자 모음 · ${data.title}`, description: "메모 문장에 적힌 수치와 차트를 모았습니다.", page: "figures", nav: "figures", body: renderFigures });
+site("summaries/index.html", 1, { title: `콘텐츠별 요약 · ${data.title}`, description: "콘텐츠마다 날짜·주제·핵심 요약·출처·태그·상태를 대주제별로 모았습니다.", page: "summaries", nav: "summaries", body: renderSummaries });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
 site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
 for (const shelf of shelves) {
@@ -85,11 +85,32 @@ writeFileSync(join(dist, "404.html"), page({
   page: "missing",
   body: (p) => `<main id="content" class="cream"><section class="wrap missing"><p class="kicker">404</p><h1>이 주소에는 페이지가 없습니다.</h1><p class="sub">책장에서 다시 찾아보세요.</p><p><a class="btn" href="${p}">공부 아카이브로 돌아가기 →</a> <a class="btn ghost" href="${p}library/">전체 책장 →</a> <a class="btn ghost" href="${p}reading/">독서 기록 →</a></p></section></main>`,
 }));
+// 없앤 숫자 모음(/figures/)과 /numbers/ 주소는 콘텐츠별 요약으로 보낸다
+for (const old of ["figures", "numbers"]) writeRedirect(`${old}/index.html`, "summaries/");
 writeFileSync(join(dist, "robots.txt"), "User-agent: *\nAllow: /\n");
 writeFileSync(join(dist, "sitemap.xml"), sitemap(pages));
 console.log(`built ${pages.length} pages → dist/`);
 
 /* ---------- page shell ---------- */
+
+function writeRedirect(rel, target) {
+  const file = join(dist, rel);
+  const to = "../".repeat(rel.split("/").length - 1) + target;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>콘텐츠별 요약으로 옮겼습니다 · ${esc(data.title)}</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="${esc(`${data.site}/${target}`)}">
+<meta http-equiv="refresh" content="0; url=${to}">
+<script>location.replace(${JSON.stringify(to)} + location.search + location.hash);</script>
+</head>
+<body><p><a href="${to}">콘텐츠별 요약</a>으로 옮겼습니다.</p></body>
+</html>
+`);
+}
 
 function writePage(rel, opts) {
   const file = join(dist, rel);
@@ -170,7 +191,7 @@ function siteHeader(prefix, nav) {
   const links = [
     ["library", "전체 책장"],
     ["map", "지식 지도"],
-    ["figures", "숫자 모음"],
+    ["summaries", "콘텐츠별 요약"],
     ["timeline", "연표"],
   ].map(([id, label]) => `<a href="${prefix}${id}/"${id === nav ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   return `<header class="topbar">
@@ -224,7 +245,7 @@ function footer(prefix, tab) {
   }
   return `<footer class="site-footer"><div class="wrap foot-in">
   <p>© 공부 아카이브 · 수치는 각 메모에 적힌 문장에서만 그렸습니다.</p>
-  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}figures/">숫자 모음</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}summaries/">콘텐츠별 요약</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
 </div></footer>`;
 }
 
@@ -263,7 +284,7 @@ function renderHome(p) {
       <h2 class="sec-title">궁금한 그림에서 시작해 보세요</h2>
       <p class="sub">메모 문장에 적힌 수치로만 그린 차트입니다. 카드를 누르면 해당 장의 그림으로 이어집니다.</p>
       <div class="fan" style="--n:${chartItems.length}">${chartItems.map((item, i) => fanCard(item, i, "")).join("")}</div>
-      <p class="center"><a class="more" href="figures/">숫자 모음 전체 보기 →</a></p>
+      <p class="center"><a class="more" href="summaries/">콘텐츠별 요약 전체 보기 →</a></p>
     </div>
   </section>
 
@@ -511,7 +532,7 @@ function quizzes(item) {
   return `<div class="quiz">${list.map((q, i) => `<fieldset class="q" data-quiz data-answer="${esc(q.answer)}"><legend><span>Q${i + 1}</span> ${esc(q.q)}</legend><div class="opts">${q.options.map((o) => `<button type="button" data-opt="${esc(o)}">${esc(o)}</button>`).join("")}</div><p class="why" hidden>${esc(q.why)}</p></fieldset>`).join("")}<p class="fig-hint">문제와 정답은 모두 이 장의 문장에서 만들었습니다.</p></div>`;
 }
 
-/* ---------- map / figures / timeline ---------- */
+/* ---------- map / summaries / timeline ---------- */
 
 function renderMap(p) {
   return `<main id="content" class="cream">
@@ -532,27 +553,43 @@ function renderMap(p) {
 </main>`;
 }
 
-function renderFigures(p) {
-  const compare = compareRows(data.items);
-  const charts = data.items.flatMap((item) => item.visuals.map((v, vi) => ({ item, v, vi }))).filter((row) => CHART_TYPES.has(row.v.type) || row.v.type === "stats");
+function renderSummaries(p) {
+  const groups = data.topics
+    .map((topic) => ({ topic, items: [...itemsByTopic[topic.id]].sort(byDateDesc) }))
+    .sort((a, b) => (a.items[0].date < b.items[0].date ? 1 : a.items[0].date > b.items[0].date ? -1 : 0));
+  const chips = [`<button type="button" data-sum-topic="all" aria-pressed="true"><span>${pad(data.items.length)}</span> 모든 주제</button>`]
+    .concat(groups.map(({ topic, items }) => `<button type="button" data-sum-topic="${topic.id}" aria-pressed="false" style="${topicVars(topic)}"><i aria-hidden="true"></i>${esc(topic.name)} <span>${items.length}</span></button>`)).join("");
   return `<main id="content" class="cream">
-  <section class="band"><div class="wrap">
-    <p class="kicker">예상 대비 실제</p><h1 class="sec-title big">숫자 모음</h1>
-    <p class="sub">‘실제’와 ‘예상’이 함께 적힌 지표를 한 축에 놓았습니다. 전월비와 전년비는 크기가 달라 따로 그렸습니다. 판정(상회·부합·하회)은 두 값을 비교한 결과입니다.</p>
-    ${compareChart(compare, p)}
-  </div></section>
-  <section class="band alt"><div class="wrap">
-    <p class="kicker">적힌 숫자</p><h2 class="sec-title">문장 속 숫자 카드</h2>
-    ${data.topics.map((topic) => {
-      const hs = itemsByTopic[topic.id].flatMap((item) => item.highlights.map((h) => ({ ...h, item })));
-      return hs.length ? `<h3 class="mini-head" style="${topicVars(topic)}"><i aria-hidden="true"></i>${esc(topic.name)} <small>${hs.length}</small></h3><div class="hi-grid">${hs.map((h) => highlightCard(h, p)).join("")}</div>` : "";
-    }).join("")}
-  </div></section>
-  <section class="band"><div class="wrap">
-    <p class="kicker">그림</p><h2 class="sec-title">모든 수치 그림</h2><p class="sub">각 장에 있는 차트와 수치 카드입니다.</p>
-    <div class="gallery">${charts.map(({ item, v, vi }) => `<a class="g-card" style="${topicVars(topicById[item.topic])}" href="${p}items/${item.id}/#${figId(item, vi)}"><div class="g-thumb">${v.type === "stats" ? `<div class="g-stats">${v.items.slice(0, 3).map((e) => `<b>${esc(e.v)}</b>`).join("")}</div>` : chartThumb(v)}</div><p class="fan-topic">${esc(topicById[item.topic].name)} · ${esc(dotDate(item.date))}</p><b>${esc(v.title || TYPE_LABEL[v.type])}</b><small>${esc(item.title)}</small></a>`).join("")}</div>
+  <section class="band sum-band"><div class="wrap">
+    <p class="kicker">콘텐츠별 요약</p><h1 class="sec-title big">콘텐츠마다 한눈에</h1>
+    <p class="sub">공부한 콘텐츠 ${data.items.length}개를 대주제별로 묶고 최신순으로 놓았습니다. 소주제를 누르면 그 장으로, 출처를 누르면 원문으로 갑니다.</p>
+    <div class="sum-tools">
+      <div class="sum-chips lib-tabs" role="toolbar" aria-label="대주제 고르기">${chips}</div>
+      <label class="sum-search"><span class="sr-only">요약 검색</span>${ICON.search}<input type="search" placeholder="제목·요약·태그·출처로 검색" autocomplete="off" data-sum-search></label>
+    </div>
+    <p class="sum-count" data-sum-count aria-live="polite">${data.items.length}개 콘텐츠</p>
+    ${groups.map(({ topic, items }) => `<section class="sum-sec" data-sum-sec="${topic.id}" style="${topicVars(topic)}">
+      <div class="lib-head"><h2><i aria-hidden="true"></i>${esc(topic.name)} <small>${items.length}개 · 최근 ${esc(dotDate(items[0].date))}</small></h2><a href="${p}topics/${topic.id}/">책 펼치기 →</a></div>
+      <div class="sum-grid">${items.map((item) => summaryCard(item, topic, p)).join("")}</div>
+    </section>`).join("")}
+    <p class="empty" data-sum-empty hidden>맞는 콘텐츠가 없습니다.</p>
   </div></section>
 </main>`;
+}
+
+function summaryCard(item, topic, p) {
+  const label = item.source.label.split("\n")[0];
+  const kind = SOURCE_KIND[item.source.kind] || item.source.kind;
+  const source = item.source.url
+    ? `<a class="sum-src" href="${esc(item.source.url)}" target="_blank" rel="noopener noreferrer" title="${esc(label)}"><b>${esc(kind)} ↗</b><span>${esc(label.replace(/^[^:]+:\s*/, ""))}</span></a>`
+    : `<span class="sum-src none" title="${esc(label)}"><b>${esc(kind)}</b><span>원문 링크 없음 · ${esc(label.replace(/^[^:]+:\s*/, ""))}</span></span>`;
+  return `<article class="sum-card" data-sum-find="${esc(findText([item.title, item.summary, topic.name, label, ...item.tags]))}">
+    <div class="sum-meta"><time datetime="${esc(item.date)}">${esc(dotDate(item.date))} ${weekday(item.date).slice(0, 1)}</time><span class="sum-topic">${esc(topic.name)}</span>${badge(item.status)}</div>
+    <h3><a href="${p}items/${item.id}/">${esc(item.title)}</a></h3>
+    <p class="sum-text">${esc(item.summary)}</p>
+    ${source}
+    <p class="sum-tags">${item.tags.map((tag) => `<a href="${p}map/#${tagId(tag)}">#${esc(tag)}</a>`).join("")}</p>
+  </article>`;
 }
 
 function renderTimeline(p) {
