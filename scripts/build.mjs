@@ -55,12 +55,12 @@ site("library/index.html", 1, { title: `전체 책장 · ${data.title}`, descrip
 site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", body: renderMap });
 site("figures/index.html", 1, { title: `숫자 모음 · ${data.title}`, description: "메모 문장에 적힌 수치와 차트를 모았습니다.", page: "figures", nav: "figures", body: renderFigures });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
-site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", nav: "reading", body: renderReading });
+site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
 for (const shelf of shelves) {
-  site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", nav: "reading", body: (p) => renderShelf(shelf, p) });
+  site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", tab: "reading", nav: shelf.id, body: (p) => renderShelf(shelf, p) });
 }
 for (const book of reading.books) {
-  site(`reading/books/${book.id}/index.html`, 3, { title: `${book.title} · 독서 기록`, description: `${book.author}${book.publisher ? ` · ${book.publisher}` : ""}`, page: "reading-book", nav: "reading", body: (p) => renderBook(book, p) });
+  site(`reading/books/${book.id}/index.html`, 3, { title: `${book.title} · 독서 기록`, description: `${book.author}${book.publisher ? ` · ${book.publisher}` : ""}`, page: "reading-book", tab: "reading", nav: shelfOf(book).id, body: (p) => renderBook(book, p) });
 }
 for (const topic of data.topics) {
   site(`topics/${topic.id}/index.html`, 2, { title: `${topic.name} · ${data.title}`, description: topic.blurb, page: "topic", body: (p) => renderTopic(topic, p) });
@@ -98,7 +98,7 @@ function writePage(rel, opts) {
   return rel;
 }
 
-function page({ title, description, depth, body, page: pageName, path, absolute, chrome, nav, item }) {
+function page({ title, description, depth, body, page: pageName, path, absolute, chrome, nav, item, tab = "study" }) {
   const prefix = absolute ? "/study-archive/" : depth ? "../".repeat(depth) : "";
   const canonPath = path === "index.html" || !path ? "/" : `/${path.replace(/index\.html$/, "")}`;
   const topic = item ? topicById[item.topic] : null;
@@ -122,11 +122,12 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="stylesheet" href="${prefix}assets/style.css">
 </head>
-<body data-page="${esc(pageName || "")}" data-root="${prefix}"${style}>
+<body data-page="${esc(pageName || "")}" data-tab="${tab}" data-root="${prefix}"${style}>
 <a class="skip" href="#content">본문으로</a>
-${chrome === "reader" ? readerHeader(prefix, item) : siteHeader(prefix, nav)}
+${tabBar(prefix, tab, pageName)}
+${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : siteHeader(prefix, nav)}
 ${body(prefix)}
-${footer(prefix)}
+${footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
 <script src="${prefix}assets/site.js" defer></script>
 </body>
@@ -147,23 +148,48 @@ function searchBox(prefix, placeholder) {
     </form>`;
 }
 
+// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/
+function tabBar(prefix, tab, pageName) {
+  const tabs = [
+    ["study", "Study", prefix, pageName === "home"],
+    ["reading", "독서기록", `${prefix}reading/`, pageName === "reading"],
+  ].map(([id, label, href, isRoot]) => `<a class="tab${id === tab ? " is-active" : ""}" href="${href}"${id === tab ? ` aria-current="${isRoot ? "page" : "true"}"` : ""}>${label}</a>`).join("");
+  return `<div class="tabbar">
+  <div class="tabbar-in">
+    <a class="tab-logo" href="${prefix}" aria-label="홈">${logo()}</a>
+    <nav class="tabs" aria-label="섹션">${tabs}</nav>
+    <div class="top-icons">
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="라이트와 다크 모드 전환">${ICON.moon}</button>
+      <a class="icon-btn" href="${REPO}" aria-label="GitHub 저장소">${ICON.github}</a>
+    </div>
+  </div>
+</div>`;
+}
+
 function siteHeader(prefix, nav) {
   const links = [
     ["library", "전체 책장"],
     ["map", "지식 지도"],
     ["figures", "숫자 모음"],
     ["timeline", "연표"],
-    ["reading", "독서 기록"],
   ].map(([id, label]) => `<a href="${prefix}${id}/"${id === nav ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   return `<header class="topbar">
   <div class="topbar-in">
-    <a class="brand" href="${prefix}">${logo()}<span>공부 아카이브</span></a>
+    <a class="brand" href="${prefix}"><span>공부 아카이브</span></a>
     ${searchBox(prefix, "책 이름이나 주제로 검색")}
-    <nav class="topnav" aria-label="사이트">${links}</nav>
-    <div class="top-icons">
-      <button class="icon-btn" type="button" data-theme-toggle aria-label="라이트와 다크 모드 전환">${ICON.moon}</button>
-      <a class="icon-btn" href="${REPO}" aria-label="GitHub 저장소">${ICON.github}</a>
-    </div>
+    <nav class="topnav" aria-label="Study">${links}</nav>
+  </div>
+</header>`;
+}
+
+function readingHeader(prefix, nav) {
+  const links = [[`${prefix}reading/`, "reading", "분류별 책장", ""]]
+    .concat(shelves.map((shelf) => [`${prefix}reading/${shelf.id}/`, shelf.id, shelf.name, ` <small>${shelf.books.length}</small>`]))
+    .map(([href, id, label, extra]) => `<a href="${href}"${id === nav ? ' aria-current="page"' : ""}>${esc(label)}${extra}</a>`).join("");
+  return `<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="${prefix}reading/"><span>독서 기록</span></a>
+    <nav class="topnav" aria-label="독서기록">${links}</nav>
   </div>
 </header>`;
 }
@@ -177,7 +203,6 @@ function readerHeader(prefix, item) {
     ${searchBox(prefix, "이 아카이브 검색")}
     <div class="top-icons">
       <a class="pill-btn" href="${prefix}library/">${ICON.shelf}<span>전체 책</span></a>
-      <button class="icon-btn" type="button" data-theme-toggle aria-label="라이트와 다크 모드 전환">${ICON.moon}</button>
     </div>
   </div>
   <div class="progress" aria-hidden="true"><i data-progress></i></div>
@@ -190,10 +215,16 @@ function readerHeader(prefix, item) {
 </aside>`;
 }
 
-function footer(prefix) {
+function footer(prefix, tab) {
+  if (tab === "reading") {
+    return `<footer class="site-footer"><div class="wrap foot-in">
+  <p>© 독서 기록 · 책 정보는 교보문고 기준입니다.</p>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}reading/">분류별 책장</a>${shelves.map((shelf) => `<a href="${prefix}reading/${shelf.id}/">${esc(shelf.name)}</a>`).join("")}<a href="${prefix}data/reading.json">reading.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+</div></footer>`;
+  }
   return `<footer class="site-footer"><div class="wrap foot-in">
   <p>© 공부 아카이브 · 수치는 각 메모에 적힌 문장에서만 그렸습니다.</p>
-  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}figures/">숫자 모음</a><a href="${prefix}timeline/">연표</a><a href="${prefix}reading/">독서 기록</a><a href="${prefix}data/archive.json">archive.json</a><a href="${prefix}data/reading.json">reading.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}figures/">숫자 모음</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
 </div></footer>`;
 }
 
@@ -215,14 +246,12 @@ function renderHome(p) {
         <div class="hero-side">
           <p>${esc(data.subtitle)}</p>
           <p class="hero-legend">${esc(data.statusLegend)}</p>
-          <p class="hero-links"><a class="hero-link" href="library/">전체 책장 둘러보기 →</a><a class="hero-link" href="reading/">독서 기록 둘러보기 →</a></p>
+          <a class="hero-link" href="library/">전체 책장 둘러보기 →</a>
         </div>
       </div>
       <nav class="hero-pills" aria-label="주제">${data.topics.map((t) => `<a href="topics/${t.id}/">${esc(t.name)} <span>${itemsByTopic[t.id].length}</span> →</a>`).join("")}</nav>
       <div class="shelf-head"><h2>처음 펼치기 좋은 책</h2><a href="library/">전체 ${data.topics.length}권 보기 →</a></div>
       <div class="shelf"><div class="shelf-row books-${data.topics.length}">${data.topics.map((t) => bookCover(t, "")).join("")}</div></div>
-      <div class="shelf-head"><h2>독서 기록 책장</h2><a href="reading/">독서 기록 ${reading.books.length}권 보기 →</a></div>
-      <div class="shelf"><div class="shelf-row books-few" style="--n:${shelves.length}">${shelves.map((shelf) => shelfCover(shelf, "")).join("")}</div></div>
       <div class="shelf-head"><h2>최근 추가된 장</h2><a href="timeline/">연표로 보기 →</a></div>
       <div class="shelf"><div class="shelf-row">${recent.map((item) => chapterCover(item, "")).join("")}</div></div>
     </div>
@@ -562,11 +591,10 @@ function renderReading(p) {
         </div>
         <div class="hero-side">
           <p>분류별 책장에 읽는 중인 책과 다 읽은 책을 꽂아 둡니다. 읽는 중이면 진행률을, 다 읽었으면 완독한 달을 표지 밑에 적습니다.</p>
-          <p class="hero-links"><a class="hero-link" href="${p}library/">공부 아카이브 책장으로 →</a></p>
         </div>
       </div>
       <nav class="hero-pills" aria-label="독서 분류">${shelves.map((shelf) => `<a href="${p}reading/${shelf.id}/">${esc(shelf.name)} <span>${shelf.books.length}</span> →</a>`).join("")}</nav>
-      <div class="shelf-head"><h2>분류별 책장</h2><a href="${p}">공부 아카이브 홈 →</a></div>
+      <div class="shelf-head"><h2>분류별 책장</h2></div>
       <div class="shelf"><div class="shelf-row books-few" style="--n:${shelves.length}">${shelves.map((shelf) => shelfCover(shelf, p)).join("")}</div></div>
       <div class="shelf-head"><h2>지금 읽는 책</h2><span class="shelf-note">${now.length}권</span></div>
       ${now.length ? `<div class="rb-grid">${now.map((book) => readingBook(book, p, true)).join("")}</div>` : `<p class="hero-small">지금 읽는 책이 없습니다.</p>`}
@@ -599,7 +627,6 @@ function renderReading(p) {
 function renderShelf(shelf, p) {
   const now = shelf.books.filter((book) => book.status === "reading").length;
   const done = shelf.books.length - now;
-  const tabs = shelves.map((s) => `<a href="${p}reading/${s.id}/"${s.id === shelf.id ? ' aria-current="page"' : ""}>${esc(s.name)} <span>${s.books.length}</span></a>`).join("");
   return `<main id="content" class="cream" style="${topicVars(shelf)}">
   <section class="book-hero">
     <div class="wrap book-hero-grid">
@@ -614,7 +641,6 @@ function renderShelf(shelf, p) {
           <div><dt>📖 읽는 중</dt><dd>${now}</dd></div>
           <div><dt>✅ 완독</dt><dd>${done}</dd></div>
         </dl>
-        <nav class="lib-tabs shelf-tabs" aria-label="다른 책장"><a href="${p}reading/">← 독서 기록</a>${tabs}</nav>
       </div>
     </div>
   </section>
@@ -1165,7 +1191,6 @@ function searchIndex() {
   return [
     ...data.topics.map((t) => ({ k: "책", t: t.name, s: t.blurb, g: [t.en], u: `topics/${t.id}/`, c: t.color })),
     ...data.items.map((item) => ({ k: `${topicById[item.topic].name} · 제${chapterNo[item.id]}장`, t: item.title, s: item.summary, g: item.tags, d: item.date, u: `items/${item.id}/`, c: topicById[item.topic].color })),
-    ...reading.books.map((book) => ({ k: `독서 기록 · ${book.category}`, t: book.title, s: `${book.author} ${book.memo || ""} ${book.publisher || ""}`, g: [book.category, book.subcategory, book.author, book.isbn].filter(Boolean), u: `reading/books/${book.id}/`, c: shelfOf(book).color })),
   ];
 }
 
