@@ -14,7 +14,7 @@
   /* theme */
   document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const dark = doc.dataset.theme ? doc.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const dark = doc.dataset.theme === "dark"; // 기본은 라이트, 다크는 직접 고를 때만
       doc.dataset.theme = dark ? "light" : "dark";
       store.set("theme", doc.dataset.theme);
     });

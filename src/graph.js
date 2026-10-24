@@ -445,7 +445,6 @@
   readColors();
   const recolor = () => { readColors(); draw(); };
   new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", recolor);
   new ResizeObserver(resize).observe(canvas);
   resize();
 

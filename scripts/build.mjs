@@ -20,27 +20,29 @@ validateGameTheory(gt);
 const universe = JSON.parse(readFileSync(join(root, "data/planets.json"), "utf8"));
 validatePlanets(universe);
 const SITE = universe.name;
-// 색: 정보 패널의 정돈감은 docs/palantir-design-spec.md(흑백·헤어라인·각진 모서리), 전체 무드는 DevCon 'Agent Stack'.
-// 주 포인트는 네온 그린, 보조 글로우는 앰버·퍼플·시안을 탭·대주제마다 하나씩. 각 쌍은 [라이트 본문용, 다크용].
+// 색은 docs/palantir-design-spec.md 기준: 흰 바탕 + 검정 잉크, 화면마다 절제된 포인트 컬러 하나.
+// 대주제·책장은 스펙 차트 팔레트(blue·gold·green·red·indigo·cerulean·orange·lime)를 채도 낮게 누른 색 [라이트, 다크].
 // archive.json·pora.json의 color 값은 그대로 두고 화면에서만 바꾼다
-const GLOW = { green: ["#15803d", "#5be36a"], amber: ["#b45309", "#f59e0b"], purple: ["#7e22ce", "#a855f7"], cyan: ["#0e7490", "#06b6d4"] };
-const PALETTE = [GLOW.cyan, GLOW.amber, GLOW.green, GLOW.purple];
-// 탭별 글로우(메인 레이어 스택·탭 포인트 컬러). src/style.css의 body[data-tab] 색과 같다
-const TAB_GLOW = { study: GLOW.green, reading: GLOW.amber, pora: GLOW.cyan, "game-theory": GLOW.purple };
+const PALETTE = [
+  ["#4a6c9b", "#8fb0de"], ["#8a6f33", "#d6bd80"], ["#417559", "#8ec3a6"], ["#9c5257", "#e0a1a6"],
+  ["#6a609e", "#b2a9de"], ["#3e7590", "#8cc1d9"], ["#96693c", "#ddb287"], ["#6c7c42", "#b8cb8a"],
+];
+// 탭별 포인트 컬러. 메인 레이어 스택에서 활성 레이어 색으로 쓰고, src/style.css의 body[data-tab] --accent와 같다
+const TAB_TINT = { study: ["#2d72d2", "#4c90f0"], reading: ["#2b5945", "#72ca9b"], pora: ["#7a6838", "#d1bd8a"], "game-theory": ["#8f4a43", "#f2c4bf"] };
+data.topics.forEach((topic, i) => Object.assign(topic, { color: PALETTE[i % PALETTE.length][0], colorDark: PALETTE[i % PALETTE.length][1] }));
+Object.assign(pora, { color: TAB_TINT.pora[0], colorDark: TAB_TINT.pora[1] });
+const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: TAB_TINT["game-theory"][0], colorDark: TAB_TINT["game-theory"][1] };
 // 메인 레이어 스택의 크기: 판 반 변(판 좌표) · 판 두께 · 레이어 사이 간격(화면 px)
 const ISO_H = 100;
 const ISO_T = 9;
 const ISO_D = 118;
-data.topics.forEach((topic, i) => Object.assign(topic, { color: PALETTE[i % PALETTE.length][0], colorDark: PALETTE[i % PALETTE.length][1] }));
-Object.assign(pora, { color: GLOW.cyan[0], colorDark: GLOW.cyan[1] });
-const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: GLOW.purple[0], colorDark: GLOW.purple[1] };
 // 화면에 장식용 이모지를 쓰지 않는다(상태 표시 📥📖✅ 등은 글자만)
 const plain = (text) => String(text).replace(/\p{Extended_Pictographic}\uFE0F?\s*/gu, "");
 const GT_NOTICE = "요약은 강의 내용(장쉐친의 주장·예측)을 정리한 것이며 사실 검증된 내용이 아닙니다.";
 const SHELF_META = {
-  문학: { id: "literature", en: "Literature", color: "#0e7490", colorDark: "#06b6d4", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
-  비문학: { id: "nonfiction", en: "Non-fiction", color: "#7e22ce", colorDark: "#a855f7", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
-  미분류: { id: "uncategorized", en: "Unsorted", color: "#525252", colorDark: "#a3a3a3", blurb: "아직 분류를 정하지 않은 책입니다." },
+  문학: { id: "literature", en: "Literature", color: "#4a6c9b", colorDark: "#8fb0de", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
+  비문학: { id: "nonfiction", en: "Non-fiction", color: "#6a609e", colorDark: "#b2a9de", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
+  미분류: { id: "uncategorized", en: "Unsorted", color: "#5f6b7c", colorDark: "#abb3bf", blurb: "아직 분류를 정하지 않은 책입니다." },
 };
 const shelves = readingShelves(reading.books);
 const shelfByName = Object.fromEntries(shelves.map((shelf) => [shelf.name, shelf]));
@@ -175,7 +177,7 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(data.site + canonPath)}">
 <link rel="icon" href="${prefix}favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="${esc(SITE)}">
@@ -351,11 +353,13 @@ function isoPts(list) {
   return list.map((q) => iso(...q)).join(" ");
 }
 
-function tabGlow(id, i) {
-  return (TAB_GLOW[id] || PALETTE[i % PALETTE.length])[1];
+// 레이어의 활성 색. TAB_TINT에 없는 탭은 대주제 팔레트를 차례로
+function tabTint(id, i) {
+  const [light, dark] = TAB_TINT[id] || PALETTE[i % PALETTE.length];
+  return `--lc-l:${light};--lc-d:${dark}`;
 }
 
-// 판 위의 그림. 모든 레이어에 궤도와 행성 노드(행성의 orbit·angle·size·ring·period)를 두고, 탭마다 작은 상징을 더한다
+// 판 위의 그림. 모든 레이어에 궤도와 행성 노드(행성의 orbit·angle·size·ring)를 두고, 탭마다 작은 상징을 더한다
 function layerArt(planet) {
   const ox = 14;
   const oy = 14;
@@ -377,10 +381,10 @@ function layerArt(planet) {
           <polygon class="u-hub" points="${isoPts([[ox - 4, oy - 4], [ox + 4, oy - 4], [ox + 4, oy + 4], [ox - 4, oy + 4]])}"/>
           <polyline points="${iso(nx, ny)} ${iso(nx, ny, 16 - Number(nr))}" class="u-stem"/>
           <g class="u-motif">${motif}</g>
-          ${ring}<circle class="u-node" cx="${sx}" cy="${sy}" r="${nr}" style="animation-duration:${(planet.period / 40).toFixed(1)}s"/>`;
+          ${ring}<circle class="u-node" cx="${sx}" cy="${sy}" r="${nr}"/>`;
 }
 
-// 판 한 장(옆면 두 개 + 윗면 + 격자). skeleton은 늘 보이는 반투명 골격, lit은 로드 때 차례로 켜지는 층
+// 판 한 장(옆면 두 개 + 윗면 + 격자). skeleton은 늘 보이는 점선 골격, lit은 로드 때 아래부터 차례로 켜지는 층
 function layerPlate(planet) {
   const H = ISO_H;
   const T = ISO_T;
@@ -399,13 +403,13 @@ function renderUniverse(p) {
   const layers = universe.planets.map((planet, i) => {
     const [lx, ly] = iso(ISO_H, -ISO_H).split(",").map(Number);
     return `<g transform="translate(0 ${-i * ISO_D})">
-      <a class="u-layer" href="${p}${planet.href}" data-i="${i}" style="--lc:${tabGlow(planet.id, i)};--d:${(0.35 + i * 0.45).toFixed(2)}s" aria-label="${esc(`${pad(i + 1)} ${planet.label} — ${planet.desc}`)}">
+      <a class="u-layer" href="${p}${planet.href}" data-i="${i}" style="${tabTint(planet.id, i)};--d:${(0.35 + i * 0.45).toFixed(2)}s" aria-label="${esc(`${pad(i + 1)} ${planet.label} — ${planet.desc}`)}">
         ${layerPlate(planet)}
         <g class="u-label"><polyline points="${lx + 6},${ly} ${lx + 44},${ly}"/><text x="${lx + 52}" y="${ly - 4}"><tspan class="u-no">${pad(i + 1)}</tspan><tspan dx="8">${esc(planet.label)}</tspan></text><text class="u-path" x="${lx + 52}" y="${ly + 14}">/${esc(planet.href)}</text></g>
       </a>
     </g>`;
   }).join("\n    ");
-  const cards = universe.planets.map((planet, i) => `<li><a class="u-card" href="${p}${planet.href}" style="--lc:${tabGlow(planet.id, i)};--d:${(0.15 + i * 0.12).toFixed(2)}s">
+  const cards = universe.planets.map((planet, i) => `<li><a class="u-card" href="${p}${planet.href}" style="${tabTint(planet.id, i)};--d:${(0.15 + i * 0.12).toFixed(2)}s">
         <svg class="u-card-art" viewBox="-180 -110 360 230" aria-hidden="true">${layerPlate(planet)}</svg>
         <span class="u-card-txt"><span class="u-card-no">${pad(i + 1)}</span><b>${esc(planet.label)}</b><small>${esc(planet.desc)}</small></span>
       </a></li>`).join("\n      ");
@@ -1216,7 +1220,7 @@ function readingShelves(books) {
   for (const book of books) if (!names.includes(book.category)) names.push(book.category);
   let extra = 0;
   return names.map((name) => {
-    const meta = SHELF_META[name] || { id: `shelf-${++extra}`, en: "Shelf", color: "#15803d", colorDark: "#5be36a", blurb: `${name}으로 분류한 책입니다.` };
+    const meta = SHELF_META[name] || { id: `shelf-${++extra}`, en: "Shelf", color: "#417559", colorDark: "#8ec3a6", blurb: `${name}으로 분류한 책입니다.` };
     const list = books.filter((book) => book.category === name).sort(byReadingOrder);
     return { ...meta, name, books: list };
   });
