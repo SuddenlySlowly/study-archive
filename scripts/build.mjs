@@ -14,6 +14,10 @@ const reading = JSON.parse(readFileSync(join(root, "data/reading.json"), "utf8")
 validateReading(reading);
 const pora = JSON.parse(readFileSync(join(root, "data/pora.json"), "utf8"));
 validatePora(pora);
+const gt = JSON.parse(readFileSync(join(root, "data/jiang-game-theory.json"), "utf8"));
+validateGameTheory(gt);
+const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: "#9a3f2c", colorDark: "#f2b4a3" };
+const GT_NOTICE = "요약은 강의 내용(장쉐친의 주장·예측)을 정리한 것이며 사실 검증된 내용이 아닙니다.";
 const SHELF_META = {
   문학: { id: "literature", en: "Literature", color: "#2f5f8f", colorDark: "#a3c8f0", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
   비문학: { id: "nonfiction", en: "Non-fiction", color: "#5b4a8e", colorDark: "#c9bdf5", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
@@ -48,6 +52,7 @@ mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
 cpSync(join(root, "data/reading.json"), join(dist, "data/reading.json"));
 cpSync(join(root, "data/pora.json"), join(dist, "data/pora.json"));
+cpSync(join(root, "data/jiang-game-theory.json"), join(dist, "data/jiang-game-theory.json"));
 cpSync(join(root, "src/covers"), join(dist, "covers"), { recursive: true });
 writeFileSync(join(dist, ".nojekyll"), "");
 writeFileSync(join(dist, "assets/search.json"), JSON.stringify(searchIndex()));
@@ -61,6 +66,10 @@ site("summaries/index.html", 1, { title: `콘텐츠별 요약 · ${data.title}`,
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
 site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
 site("pora/index.html", 1, { title: `${pora.title} (${pora.short}) · ${data.title}`, description: pora.intro, page: "pora", tab: "pora", body: renderPora });
+site("game-theory/index.html", 1, { title: `${GT.tab} · ${data.title}`, description: `${gt.channel} 채널 ${GT.lecturer}의 ${gt.series} 시리즈 #1~#${gt.episodes.length} 회차별 요약`, page: "game-theory", tab: "game-theory", nav: "list", body: renderGameTheory });
+for (const ep of gt.episodes) {
+  site(`game-theory/${ep.number}/index.html`, 2, { title: `#${ep.number} ${episodeTitle(ep)} · ${GT.tab}`, description: firstSentence(ep.summary), page: "game-theory-episode", tab: "game-theory", body: (p) => renderEpisode(ep, p) });
+}
 for (const shelf of shelves) {
   site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", tab: "reading", nav: shelf.id, body: (p) => renderShelf(shelf, p) });
 }
@@ -151,7 +160,7 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <body data-page="${esc(pageName || "")}" data-tab="${tab}" data-root="${prefix}"${style}>
 <a class="skip" href="#content">본문으로</a>
 ${tabBar(prefix, tab, pageName)}
-${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : tab === "pora" ? poraHeader(prefix) : siteHeader(prefix, nav)}
+${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : tab === "pora" ? poraHeader(prefix) : tab === "game-theory" ? gameTheoryHeader(prefix, nav) : siteHeader(prefix, nav)}
 ${body(prefix)}
 ${footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
@@ -175,12 +184,13 @@ function searchBox(prefix, placeholder) {
     </form>`;
 }
 
-// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/, PoRA = /pora/
+// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/, PoRA = /pora/, 장쉐친 게임이론 = /game-theory/
 function tabBar(prefix, tab, pageName) {
   const tabs = [
     ["study", "Study", prefix, pageName === "home"],
     ["reading", "독서기록", `${prefix}reading/`, pageName === "reading"],
     ["pora", tabLabel(pora), `${prefix}pora/`, pageName === "pora"],
+    ["game-theory", tabLabel(GT), `${prefix}game-theory/`, pageName === "game-theory"],
   ].map(([id, label, href, isRoot]) => `<a class="tab${id === tab ? " is-active" : ""}" href="${href}"${id === tab ? ` aria-current="${isRoot ? "page" : "true"}"` : ""}>${label}</a>`).join("");
   return `<div class="tabbar">
   <div class="tabbar-in">
@@ -194,10 +204,11 @@ function tabBar(prefix, tab, pageName) {
 </div>`;
 }
 
-// 좁은 화면에서는 짧은 이름(PoRA)만 남긴다
+// 좁은 화면에서는 짧은 이름(PoRA, 게임이론)만 남긴다
 function tabLabel({ tab, short }) {
-  if (!tab.startsWith(short)) return esc(tab);
-  return `${esc(short)}<span class="tab-long">${esc(tab.slice(short.length))}</span>`;
+  if (tab.startsWith(short)) return `${esc(short)}<span class="tab-long">${esc(tab.slice(short.length))}</span>`;
+  if (tab.endsWith(short)) return `<span class="tab-long">${esc(tab.slice(0, -short.length))}</span>${esc(short)}`;
+  return esc(tab);
 }
 
 function siteHeader(prefix, nav) {
@@ -239,6 +250,21 @@ function poraHeader(prefix) {
 </header>`;
 }
 
+function gameTheoryHeader(prefix, nav) {
+  const ext = `target="_blank" rel="noopener noreferrer"`;
+  const links = [
+    `<a href="${prefix}game-theory/"${nav === "list" ? ' aria-current="page"' : ""}>회차 목록</a>`,
+    `<a href="${prefix}game-theory/#gt-about">시리즈 소개</a>`,
+    `<a href="${esc(gt.playlistUrl)}" ${ext}>재생목록 ↗</a>`,
+  ].join("");
+  return `<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="${prefix}game-theory/"><span>${esc(GT.tab)}</span></a>
+    <nav class="topnav" aria-label="${esc(GT.tab)}">${links}</nav>
+  </div>
+</header>`;
+}
+
 function readerHeader(prefix, item) {
   const topic = topicById[item.topic];
   return `<header class="readbar">
@@ -261,6 +287,12 @@ function readerHeader(prefix, item) {
 }
 
 function footer(prefix, tab) {
+  if (tab === "game-theory") {
+    return `<footer class="site-footer"><div class="wrap foot-in">
+  <p>© 강의 ${esc(gt.channel)} · ${esc(GT.lecturer)}(${esc(GT.lecturerEn)}). ${esc(GT_NOTICE)}</p>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}game-theory/">회차 목록</a><a href="${esc(gt.channelUrl)}">${esc(gt.channel)} 채널</a><a href="${esc(gt.playlistUrl)}">재생목록</a><a href="${prefix}data/jiang-game-theory.json">jiang-game-theory.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+</div></footer>`;
+  }
   if (tab === "pora") {
     return `<footer class="site-footer"><div class="wrap foot-in">
   <p>© ${esc(pora.title)} · ${esc(pora.authors)}(${esc(pora.org)}). 진도 체크는 이 브라우저에만 저장됩니다.</p>
@@ -735,6 +767,103 @@ function renderPora(p) {
     </div>
   </section>
 </main>`;
+}
+
+/* ---------- 장쉐친 게임이론 ---------- */
+
+function renderGameTheory(p) {
+  const ext = `target="_blank" rel="noopener noreferrer"`;
+  const eps = gt.episodes;
+  const hours = Math.round(eps.reduce((sum, ep) => sum + seconds(ep.duration), 0) / 3600);
+  return `<main id="content" class="cream" style="${topicVars(GT)}">
+  ${gtNotice()}
+  <section class="hero" id="gt-about">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="hero-kicker">${esc(gt.channel)} · ${esc(gt.series)}</p>
+          <h1>${esc(GT.lecturer)}의<br><em>게임이론</em></h1>
+          <p class="hero-small">#1~#${eps.length} · ${esc(dotDate(eps[0].publishedDate))} ~ ${esc(dotDate(eps.at(-1).publishedDate))} · 약 ${hours}시간</p>
+        </div>
+        <div class="hero-side">
+          <p>${esc(gt.channel)} 채널에서 ${esc(GT.lecturer)}(${esc(GT.lecturerEn)})이 한 학기 동안 강의한 ${esc(gt.series)} 시리즈입니다. 데이팅 게임에서 시작해 교육·이민·금융·전쟁·AI까지, 행위자들의 이익과 전략으로 세상을 읽는 그의 관점을 회차별로 요약했습니다.</p>
+          <p class="gt-hero-links"><a class="hero-link" href="${esc(gt.channelUrl)}" ${ext}>${esc(gt.channel)} 채널 ↗</a><a class="hero-link" href="${esc(gt.playlistUrl)}" ${ext}>${esc(gt.series)} 재생목록 ↗</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="gt-episodes">
+    <div class="wrap">
+      <p class="kicker">회차 목록</p>
+      <h2 class="sec-title">#1부터 #${eps.length}까지</h2>
+      <p class="sub">카드를 누르면 그 회차의 요약·핵심 포인트·영상으로 갑니다.</p>
+      <div class="sum-tools">
+        <label class="sum-search"><span class="sr-only">회차 검색</span>${ICON.search}<input type="search" placeholder="번호·제목·요약·개념으로 검색" autocomplete="off" data-gt-search></label>
+      </div>
+      <p class="sum-count" data-gt-count aria-live="polite">${eps.length}회</p>
+      <ol class="gt-grid">${eps.map((ep) => episodeCard(ep, p)).join("")}</ol>
+      <p class="empty" data-gt-empty hidden>맞는 회차가 없습니다.</p>
+    </div>
+  </section>
+</main>`;
+}
+
+function episodeCard(ep, p) {
+  const find = findText([`#${ep.number}`, ep.title, ep.summary, ...ep.keyPoints, ...ep.keyConcepts]);
+  return `<li data-gt-find="${esc(find)}"><a class="gt-card" href="${p}game-theory/${ep.number}/">
+    <span class="gt-no">#${ep.number}</span>
+    <span class="gt-meta"><time datetime="${esc(ep.publishedDate)}">${esc(dotDate(ep.publishedDate))}</time><span>${esc(ep.duration)}</span>${ep.summarySource === "description" ? `<span class="gt-src">설명 기반</span>` : ""}</span>
+    <h3>${esc(episodeTitle(ep))}</h3>
+    <span class="gt-lede">${esc(firstSentence(ep.summary))}</span>
+    <span class="gt-tags">${ep.keyConcepts.map((c) => `<span>#${esc(c)}</span>`).join("")}</span>
+  </a></li>`;
+}
+
+function renderEpisode(ep, p) {
+  const eps = gt.episodes;
+  const index = eps.indexOf(ep);
+  const prev = eps[index - 1];
+  const next = eps[index + 1];
+  const ext = `target="_blank" rel="noopener noreferrer"`;
+  const title = episodeTitle(ep);
+  const sections = [
+    { id: "video", title: "영상", html: `<div class="yt-wrap"><button type="button" class="yt" data-yt="${esc(ep.videoId)}" data-title="${esc(ep.title)}"><img src="https://i.ytimg.com/vi/${esc(ep.videoId)}/hqdefault.jpg" alt="" loading="lazy"><span>▶ 영상 재생</span></button><p class="gt-video-links"><a href="${esc(ep.url)}" ${ext}>YouTube에서 열기 ↗</a>${ep.reuploadUrl ? `<a href="${esc(ep.reuploadUrl)}" ${ext}>재업로드 영상 ↗</a>` : ""}</p>${ep.reuploadUrl ? `<p class="muted gt-reupload">원본 영상을 볼 수 없으면 재업로드 영상을 보세요.</p>` : ""}</div>` },
+    { id: "summary", title: "요약", html: `<div class="prose">${paragraphs(ep.summary).map((t) => `<p>${esc(t)}</p>`).join("")}</div>` },
+    { id: "points", title: "핵심 포인트", html: `<div class="key-box"><ul class="key-list">${ep.keyPoints.map((point) => `<li>${esc(point)}</li>`).join("")}</ul></div>` },
+    { id: "concepts", title: "핵심 개념", html: `<p class="gt-concepts">${ep.keyConcepts.map((c) => `<a class="tag" href="${p}game-theory/?q=${encodeURIComponent(c)}">#${esc(c)}</a>`).join("")}</p><p class="muted gt-concepts-note">개념을 누르면 그 개념이 나오는 회차를 찾습니다.</p>` },
+  ];
+  return `<main id="content" class="cream" style="${topicVars(GT)}">
+  ${gtNotice()}
+  <div class="reader">
+    <article class="reader-main">
+      <nav class="crumbs" aria-label="경로"><a href="${p}game-theory/">${esc(GT.tab)}</a><span aria-hidden="true">/</span><span>#${ep.number}</span></nav>
+      <p class="ch-no">#${ep.number} <span>${esc(gt.series)} · ${esc(gt.channel)}</span></p>
+      <h1 class="ch-title">${esc(title)}</h1>
+      <div class="ch-meta"><span class="tag"><time datetime="${esc(ep.publishedDate)}">${esc(dotDate(ep.publishedDate))} ${weekday(ep.publishedDate).slice(0, 1)}</time></span><span class="tag">${esc(ep.duration)}</span><span class="badge ${ep.summarySource === "description" ? "st-reading" : "st-done"}">${ep.summarySource === "description" ? "영상 설명 기반 요약" : "자막 기반 요약"}</span></div>
+      ${ep.summarySource === "description" ? `<aside class="callout warn"><b>참고</b><p>자막 없이 영상 설명만으로 요약함</p></aside>` : ""}
+      ${sections.map((s, i) => `<section class="ch-sec" id="${s.id}"><h2><span class="sec-no">${pad(i + 1)}</span>${esc(s.title)}</h2>${s.html}</section>`).join("")}
+      <nav class="pager" aria-label="앞뒤 회차">
+        ${prev ? `<a class="prev" href="${p}game-theory/${prev.number}/"><small>← 이전 회차 · #${prev.number}</small><b>${esc(episodeTitle(prev))}</b></a>` : `<a class="prev" href="${p}game-theory/"><small>← 첫 회차 · 회차 목록</small><b>${esc(GT.tab)}</b></a>`}
+        ${next ? `<a class="next" href="${p}game-theory/${next.number}/"><small>다음 회차 · #${next.number} →</small><b>${esc(episodeTitle(next))}</b></a>` : `<a class="next" href="${p}game-theory/"><small>마지막 회차 · 회차 목록 →</small><b>${esc(GT.tab)}</b></a>`}
+      </nav>
+    </article>
+    <aside class="otp" aria-label="이 페이지 목차"><p>이 페이지에서</p><ol>${sections.map((s) => `<li><a href="#${s.id}" data-otp="${s.id}">${esc(s.title)}</a></li>`).join("")}</ol></aside>
+  </div>
+</main>`;
+}
+
+function gtNotice() {
+  return `<div class="gt-notice" role="note"><div class="wrap"><p><b>고지</b> ${esc(GT_NOTICE)}</p></div></div>`;
+}
+
+// "Game Theory #1: The Dating Game" → "The Dating Game"
+function episodeTitle(ep) {
+  return ep.title.replace(/^Game Theory #\d+:\s*/, "");
+}
+
+function seconds(duration) {
+  return duration.split(":").reduce((sum, part) => sum * 60 + Number(part), 0);
 }
 
 function renderShelf(shelf, p) {
@@ -1439,6 +1568,38 @@ function validatePora(book) {
     ids.add(step.id);
     if (!step.label) throw new Error(`pora: checklist ${step.id} label`);
   }
+}
+
+function validateGameTheory(series) {
+  for (const key of ["series", "channel", "channelUrl", "playlistUrl"]) {
+    if (!String(series[key] || "").trim()) throw new Error(`game-theory: ${key} missing`);
+  }
+  const httpsUrl = (url, ctx) => {
+    let ok = false;
+    try { ok = new URL(url).protocol === "https:"; } catch {}
+    if (!ok) throw new Error(`game-theory: ${ctx} url ${url}`);
+  };
+  httpsUrl(series.channelUrl, "channel");
+  httpsUrl(series.playlistUrl, "playlist");
+  if (!series.episodes?.length) throw new Error("game-theory: episodes empty");
+  series.episodes.forEach((ep, i) => {
+    const ctx = `game-theory #${ep.number}`;
+    if (ep.number !== i + 1) throw new Error(`${ctx}: expected #${i + 1} (numbers must run 1, 2, 3 … in order)`);
+    if (!/^Game Theory #\d+:\s*\S/.test(ep.title || "") || !ep.title.startsWith(`Game Theory #${ep.number}:`)) throw new Error(`${ctx}: title ${ep.title}`);
+    if (!/^[\w-]{11}$/.test(ep.videoId || "")) throw new Error(`${ctx}: videoId ${ep.videoId}`);
+    httpsUrl(ep.url, ctx);
+    if (youtubeId(ep.url) !== ep.videoId) throw new Error(`${ctx}: url does not match videoId`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ep.publishedDate || "")) throw new Error(`${ctx}: publishedDate ${ep.publishedDate}`);
+    if (!/^(?:\d+:)?[0-5]?\d:[0-5]\d$/.test(ep.duration || "")) throw new Error(`${ctx}: duration ${ep.duration}`);
+    if (!String(ep.summary || "").trim()) throw new Error(`${ctx}: summary missing`);
+    if (!ep.keyPoints?.length || ep.keyPoints.some((t) => !String(t).trim())) throw new Error(`${ctx}: keyPoints`);
+    if (!ep.keyConcepts?.length || ep.keyConcepts.some((t) => !String(t).trim())) throw new Error(`${ctx}: keyConcepts`);
+    if (!["transcript", "description"].includes(ep.summarySource)) throw new Error(`${ctx}: summarySource ${ep.summarySource}`);
+    if (ep.reuploadUrl) {
+      httpsUrl(ep.reuploadUrl, `${ctx} reupload`);
+      if (ep.reuploadVideoId && youtubeId(ep.reuploadUrl) !== ep.reuploadVideoId) throw new Error(`${ctx}: reuploadUrl does not match reuploadVideoId`);
+    }
+  });
 }
 
 function validateReading(log) {
