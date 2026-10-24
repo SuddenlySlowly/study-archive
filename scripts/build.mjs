@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync, cpSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, cpSync, rmSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +12,7 @@ const itemsByTopic = Object.fromEntries(data.topics.map((topic) => [topic.id, []
 for (const item of data.items) itemsByTopic[item.topic].push(item);
 const reading = JSON.parse(readFileSync(join(root, "data/reading.json"), "utf8"));
 validateReading(reading);
+const notesByBook = loadNotes(reading.books);
 const pora = JSON.parse(readFileSync(join(root, "data/pora.json"), "utf8"));
 validatePora(pora);
 const gt = JSON.parse(readFileSync(join(root, "data/jiang-game-theory.json"), "utf8"));
@@ -50,10 +51,13 @@ mkdirSync(join(dist, "assets"), { recursive: true });
 cpSync(join(root, "src/style.css"), join(dist, "assets/style.css"));
 cpSync(join(root, "src/site.js"), join(dist, "assets/site.js"));
 cpSync(join(root, "src/graph.js"), join(dist, "assets/graph.js"));
+cpSync(join(root, "src/mindmap.js"), join(dist, "assets/mindmap.js"));
 cpSync(join(root, "src/favicon.svg"), join(dist, "favicon.svg"));
 mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
 cpSync(join(root, "data/reading.json"), join(dist, "data/reading.json"));
+mkdirSync(join(dist, "data/notes"), { recursive: true });
+for (const id of Object.keys(notesByBook)) cpSync(join(root, `data/notes/${id}.json`), join(dist, `data/notes/${id}.json`));
 cpSync(join(root, "data/pora.json"), join(dist, "data/pora.json"));
 cpSync(join(root, "data/jiang-game-theory.json"), join(dist, "data/jiang-game-theory.json"));
 cpSync(join(root, "data/planets.json"), join(dist, "data/planets.json"));
@@ -79,7 +83,7 @@ for (const shelf of shelves) {
   site(`reading/${shelf.id}/index.html`, 2, { title: `${shelf.name} 책장 · 독서 기록`, description: shelf.blurb, page: "reading-shelf", tab: "reading", nav: shelf.id, body: (p) => renderShelf(shelf, p) });
 }
 for (const book of reading.books) {
-  site(`reading/books/${book.id}/index.html`, 3, { title: `${book.title} · 독서 기록`, description: `${book.author}${book.publisher ? ` · ${book.publisher}` : ""}`, page: "reading-book", tab: "reading", nav: shelfOf(book).id, body: (p) => renderBook(book, p) });
+  site(`reading/books/${book.id}/index.html`, 3, { title: `${book.title} · 독서 기록`, description: `${book.author}${book.publisher ? ` · ${book.publisher}` : ""}`, page: "reading-book", tab: "reading", nav: shelfOf(book).id, scripts: ["mindmap.js"], body: (p) => renderBook(book, p) });
 }
 for (const topic of data.topics) {
   site(`topics/${topic.id}/index.html`, 2, { title: `${topic.name} · ${data.title}`, description: topic.blurb, page: "topic", body: (p) => renderTopic(topic, p) });
@@ -730,6 +734,51 @@ function renderTimeline(p) {
 }
 
 /* ---------- reading log ---------- */
+// 독서기록 탭은 문서형 패널 레이아웃(rd-*): 왼쪽 사이드바에 책장·책 목록, 오른쪽에 머리말·숫자 줄·패널
+
+function readingShell(nav, p, main, style = "") {
+  return `<main id="content" class="rd"${style ? ` style="${style}"` : ""}>
+  <div class="rd-shell">
+    ${readingSide(nav, p)}
+    <div class="rd-main">
+${main}
+    </div>
+  </div>
+</main>`;
+}
+
+function readingSide(nav, p) {
+  const cur = (id) => (id === nav ? ' aria-current="page"' : "");
+  return `<aside class="rd-side" aria-label="독서 기록 목차">
+      <p class="rd-side-h">독서 기록</p>
+      <ul><li><a href="${p}reading/"${cur("reading")}>개요</a></li></ul>
+      <p class="rd-side-h">책장</p>
+      <ul>${shelves.map((shelf) => `<li style="${topicVars(shelf)}"><a href="${p}reading/${shelf.id}/"${cur(shelf.id)}><i class="rd-dot" aria-hidden="true"></i>${esc(shelf.name)}<small>${shelf.books.length}</small></a>${shelf.books.length ? `<ul>${shelf.books.map((book) => `<li><a href="${p}reading/books/${book.id}/"${cur(`book:${book.id}`)}>${esc(book.title)}</a></li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>
+    </aside>`;
+}
+
+// crumbs: [label, href]의 목록. 마지막은 href 없이 현재 페이지. kicker·lede·meta는 이미 escape한 HTML
+function rdHead(crumbs, { kicker = "", title, lede = "", meta = "" }) {
+  const trail = crumbs.map(([label, href]) => (href ? `<a href="${href}">${esc(label)}</a>` : `<span aria-current="page">${esc(label)}</span>`)).join(`<span aria-hidden="true">/</span>`);
+  return `<header class="rd-head">
+      <nav class="rd-crumbs" aria-label="경로">${trail}</nav>
+      ${kicker ? `<p class="rd-kicker">${kicker}</p>` : ""}
+      <h1>${esc(title)}</h1>
+      ${lede ? `<p class="rd-lede">${lede}</p>` : ""}
+      ${meta ? `<p class="rd-meta">${meta}</p>` : ""}
+    </header>`;
+}
+
+function rdStats(rows) {
+  return `<dl class="rd-stats">${rows.map(([label, value, unit = ""]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}${unit ? `<small>${esc(unit)}</small>` : ""}</dd></div>`).join("")}</dl>`;
+}
+
+function rdPanel(id, title, body, note = "") {
+  return `<section class="rd-panel" id="${id}" aria-labelledby="${id}-h">
+      <header class="rd-panel-h"><h2 id="${id}-h">${esc(title)}</h2>${note ? `<span class="rd-note">${note}</span>` : ""}</header>
+      <div class="rd-panel-b">${body}</div>
+    </section>`;
+}
 
 function renderReading(p) {
   const now = reading.books.filter((book) => book.status === "reading");
@@ -737,48 +786,195 @@ function renderReading(p) {
   const pages = reading.books.reduce((n, book) => n + readingProgress(book).page, 0);
   const days = new Set(reading.logs.map((log) => log.date)).size;
   const recent = sortedLogs().reverse().slice(0, 8);
-  return `<main id="content">
-  <section class="hero">
-    <div class="wrap">
-      <div class="hero-grid">
-        <div>
-          <p class="hero-kicker">READING LOG · 독서 기록</p>
-          <h1>읽은 책마다,<br><em>꽂아 둘 자리가 있습니다.</em></h1>
-          <p class="hero-small">마지막 기록 ${esc(dotDate(reading.updatedAt.slice(0, 10)))} · 책장 ${shelves.length}칸 ${reading.books.length}권</p>
-        </div>
-        <div class="hero-side">
-          <p>분류별 책장에 읽는 중인 책과 다 읽은 책을 꽂아 둡니다. 읽는 중이면 진행률을, 다 읽었으면 완독한 달을 표지 밑에 적습니다.</p>
-        </div>
-      </div>
-      <nav class="hero-pills" aria-label="독서 분류">${shelves.map((shelf) => `<a href="${p}reading/${shelf.id}/">${esc(shelf.name)} <span>${shelf.books.length}</span> →</a>`).join("")}</nav>
-      <div class="shelf-head"><h2>분류별 책장</h2></div>
-      <div class="shelf"><div class="shelf-row books-few" style="--n:${shelves.length}">${shelves.map((shelf) => shelfCover(shelf, p)).join("")}</div></div>
-      <div class="shelf-head"><h2>지금 읽는 책</h2><span class="shelf-note">${now.length}권</span></div>
-      ${now.length ? `<div class="rb-grid">${now.map((book) => readingBook(book, p, true)).join("")}</div>` : `<p class="hero-small">지금 읽는 책이 없습니다.</p>`}
-    </div>
-  </section>
+  const updated = reading.updatedAt.slice(0, 10);
+  return readingShell("reading", p, [
+    rdHead([["홈", p], ["독서 기록"]], {
+      kicker: "Reading log",
+      title: "독서 기록",
+      lede: "분류별 책장에 읽는 중인 책과 다 읽은 책을 꽂아 둡니다. 책등 두께는 쪽수, 색은 표지에서 가져옵니다.",
+      meta: `마지막 기록 <time datetime="${esc(updated)}">${esc(dotDate(updated))}</time> · 책장 ${shelves.length}칸 · ${reading.books.length}권`,
+    }),
+    rdStats([["전체", reading.books.length, "권"], ["읽는 중", now.length, "권"], ["완독", done.length, "권"], ["읽은 쪽", pages.toLocaleString("ko-KR"), "쪽"], ["기록한 날", days, "일"]]),
+    rdPanel("shelves", "분류별 책장", `<div class="rd-shelf-grid">${shelves.map((shelf) => shelfCard(shelf, p)).join("")}</div>`, `${shelves.length}칸`),
+    rdPanel("now", "지금 읽는 책", now.length ? bookTable(now, p) : `<p class="rd-empty">지금 읽는 책이 없습니다.</p>`, `${now.length}권`),
+    recent.length ? rdPanel("recent", "최근 기록", logTable(recent, p, true), `최근 ${recent.length}개`) : "",
+  ].join("\n"));
+}
 
-  <section class="cream band">
-    <div class="wrap">
-      <p class="kicker">한눈에 보기</p>
-      <h2 class="sec-title">독서 기록의 모양</h2>
-      <p class="sub">책마다 마지막으로 적은 쪽수와 기록한 날을 셌습니다.</p>
-      <div class="kpis">
-        <div><b>${reading.books.length}</b><span>권</span></div>
-        <div><b>${now.length}</b><span>📖 읽는 중</span></div>
-        <div><b>${done.length}</b><span>✅ 완독</span></div>
-        <div><b>${pages.toLocaleString("ko-KR")}</b><span>읽은 쪽</span></div>
-        <div><b>${days}</b><span>기록한 날</span></div>
+function renderShelf(shelf, p) {
+  const now = shelf.books.filter((book) => book.status === "reading").length;
+  const pages = shelf.books.reduce((n, book) => n + Number(book.totalPages), 0);
+  const legend = `<ul class="case-legend"><li><i class="lg-w" aria-hidden="true"></i>두께 = 쪽수</li><li><i class="lg-c" aria-hidden="true"></i>색 = 표지 (없으면 분류 색)</li><li><i class="lg-p" aria-hidden="true"></i>오른쪽 띠 = 진행률</li></ul>`;
+  return readingShell(shelf.id, p, [
+    rdHead([["홈", p], ["독서 기록", `${p}reading/`], [`${shelf.name} 책장`]], {
+      kicker: `<i class="rd-dot" aria-hidden="true"></i>${esc(shelf.en)}`,
+      title: `${shelf.name} 책장`,
+      lede: esc(shelf.blurb),
+    }),
+    rdStats([["꽂힌 책", shelf.books.length, "권"], ["읽는 중", now, "권"], ["완독", shelf.books.length - now, "권"], ["쪽수 합계", pages.toLocaleString("ko-KR"), "쪽"]]),
+    rdPanel("case", "책장", bookcase(shelf.books, p) + legend, "책등에 올리면 표지·진행 상태, 누르면 책 상세"),
+    rdPanel("list", "목록", shelf.books.length ? bookTable(shelf.books, p) : `<p class="rd-empty">아직 이 책장에 꽂힌 책이 없습니다.</p>`, `${shelf.books.length}권 · 읽는 중 먼저, 다음 최근 완독 순`),
+  ].join("\n"), topicVars(shelf));
+}
+
+function renderBook(book, p) {
+  const shelf = shelfOf(book);
+  const logs = sortedLogs().filter(({ log }) => log.bookId === book.id).reverse();
+  const notes = notesByBook[book.id];
+  const facts = [
+    ["저자", book.author],
+    ["옮긴이 등", book.memo],
+    ["분류", book.subcategory ? `${book.category} · ${book.subcategory.split(">").at(-1).trim()}` : book.category],
+    ["출판사", book.publisher],
+    ["출간일", book.pubDate && dotDate(book.pubDate)],
+    ["쪽수", book.pages && `${book.pages}쪽`],
+    ["ISBN", book.isbn],
+    ["읽기 시작", book.startDate && dotDate(book.startDate)],
+    ["완독", book.endDate && dotDate(book.endDate)],
+  ].filter(([, v]) => v);
+  const props = `<section class="rd-panel rd-props" aria-labelledby="props-h">
+      <header class="rd-panel-h"><h2 id="props-h">속성</h2><span class="rd-note">교보문고 기준</span></header>
+      <div class="rd-panel-b">
+        ${statusBlock(book)}
+        <dl class="rd-props-list">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <p class="rd-actions">${book.kyoboUrl ? `<a class="rd-btn primary" href="${esc(book.kyoboUrl)}" target="_blank" rel="noopener noreferrer">교보문고에서 보기 ↗</a>` : ""}<a class="rd-btn" href="#notes">메모 보기</a><a class="rd-btn" href="${p}reading/${shelf.id}/">${esc(shelf.name)} 책장 →</a></p>
       </div>
-      ${recent.length ? `<figure class="card-panel"><div class="fig-title">최근 기록</div><ol class="rlog">${recent.map(({ log, gained }) => {
-        const book = reading.books.find((b) => b.id === log.bookId);
-        const shelf = shelfOf(book);
-        const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
-        return `<li style="${topicVars(shelf)}"><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time><a href="${p}reading/books/${esc(book.id)}/">${esc(book.title)}</a><span>${esc(what)}${log.to != null ? ` <b>+${gained}쪽</b>` : ""}${log.minutes ? ` · ${log.minutes}분` : ""}</span></li>`;
-      }).join("")}</ol></figure>` : ""}
-    </div>
-  </section>
-</main>`;
+    </section>`;
+  return readingShell(`book:${book.id}`, p, [
+    rdHead([["홈", p], ["독서 기록", `${p}reading/`], [`${shelf.name} 책장`, `${p}reading/${shelf.id}/`], [book.title]], {
+      kicker: `<i class="rd-dot" aria-hidden="true"></i>${esc(book.subcategory || book.category)}`,
+      title: book.title,
+      lede: `${esc(book.author)}${book.memo ? ` · ${esc(book.memo)}` : ""}`,
+    }),
+    `<div class="rd-book-grid"><figure class="rd-cover">${coverFace(book, p)}</figure>${props}</div>`,
+    rdPanel("notes", "메모", mindmap(book, notes), notes ? `data/notes/${esc(book.id)}.json${notes.updatedAt ? ` · ${esc(dotDate(notes.updatedAt.slice(0, 10)))}` : ""}` : "저장소에 아직 메모 없음"),
+    rdPanel("logs", "읽은 기록", logs.length ? logTable(logs, p, false) : `<p class="rd-empty">아직 기록이 없습니다.</p>`, `쪽수 기록 ${logs.length}개`),
+  ].join("\n"), topicVars(shelf));
+}
+
+function shelfCard(shelf, p) {
+  const now = shelf.books.filter((book) => book.status === "reading").length;
+  return `<article class="rd-shelf-card" style="${topicVars(shelf)}">
+        <header><i class="rd-dot" aria-hidden="true"></i><h3><a href="${p}reading/${shelf.id}/">${esc(shelf.name)}</a></h3><span class="rd-en">${esc(shelf.en)}</span><span class="rd-count">${shelf.books.length}권</span></header>
+        ${bookcase(shelf.books, p, true)}
+        <footer><span>읽는 중 ${now} · 완독 ${shelf.books.length - now}</span><a href="${p}reading/${shelf.id}/">책장 열기 →</a></footer>
+      </article>`;
+}
+
+// 책장 한 칸. 책등 칸(.sp-slot)이 모두 같은 높이라 줄이 넘치면 flex-wrap으로 아래 선반이 생기고, 선반 판은 배경 그라데이션이 줄마다 그린다
+function bookcase(books, p, mini = false) {
+  const row = books.length
+    ? `<ul class="case-row">${books.map((book) => `<li class="sp-slot">${spine(book, p)}</li>`).join("")}</ul>`
+    : `<div class="case-row is-empty"><span>아직 꽂힌 책이 없습니다.</span></div>`;
+  return `<div class="case${mini ? " mini" : ""}">${row}</div>`;
+}
+
+// 책등. 두께는 쪽수에 비례(24~76px), 높이는 책마다 조금씩 다르게(id 해시). 색은 site.js가 표지에서 뽑고, 그 전에는 분류 색을 조금씩 바꿔 쓴다
+function spine(book, p) {
+  const shelf = shelfOf(book);
+  const h = hashOf(book.id);
+  const w = Math.max(24, Math.min(76, Math.round(14 + Number(book.totalPages) * 0.085)));
+  const hf = (0.8 + (h % 17) / 100).toFixed(2);
+  const tint = `color-mix(in srgb, ${shelf.color} ${88 - (h % 4) * 7}%, ${h % 2 ? "#000" : "#fff"})`;
+  const { pct } = readingProgress(book);
+  const when = doneMonth(book);
+  const status = book.status === "done" ? `완독 ${when}` : `읽는 중 ${pct}%`;
+  const attrs = {
+    "data-title": book.title,
+    "data-author": book.author,
+    "data-status": book.status,
+    "data-pct": pct,
+    "data-when": when,
+    "data-pages": book.totalPages,
+    "data-cover": book.cover ? `${p}${book.cover}` : "",
+  };
+  return `<a class="sp" href="${p}reading/books/${book.id}/" style="--w:${w};--hf:${hf};--sp:${tint}" data-spine ${Object.entries(attrs).filter(([, v]) => v !== "").map(([k, v]) => `${k}="${esc(v)}"`).join(" ")} aria-label="${esc(`${book.title} · ${book.author} · ${book.totalPages}쪽 · ${status}`)}"><span class="sp-title">${esc(book.title)}</span><span class="sp-author">${esc(book.author)}</span>${book.status === "reading" ? `<span class="sp-prog" style="--pct:${pct}%" aria-hidden="true"></span>` : ""}</a>`;
+}
+
+function bookTable(books, p) {
+  return `<div class="rd-table-wrap"><table class="rd-table">
+        <thead><tr><th scope="col">책</th><th scope="col">분류</th><th scope="col" class="num">쪽수</th><th scope="col">상태</th><th scope="col">기간</th></tr></thead>
+        <tbody>${books.map((book) => {
+          const shelf = shelfOf(book);
+          const sub = book.subcategory ? book.subcategory.split(">").at(-1).trim() : "";
+          const period = `${book.startDate ? dotDate(book.startDate) : "—"} ~ ${book.endDate ? dotDate(book.endDate) : ""}`;
+          return `<tr style="${topicVars(shelf)}"><td><a class="rd-book" href="${p}reading/books/${book.id}/">${thumb(book, p)}<span><b>${esc(book.title)}</b><small>${esc(book.author)}${book.publisher ? ` · ${esc(book.publisher)}` : ""}</small></span></a></td><td><span class="rd-chip"><i class="rd-dot" aria-hidden="true"></i>${esc(shelf.name)}</span>${sub ? `<small class="rd-sub">${esc(sub)}</small>` : ""}</td><td class="num">${book.totalPages}</td><td>${statusCell(book)}</td><td class="rd-mono">${esc(period)}</td></tr>`;
+        }).join("")}</tbody>
+      </table></div>`;
+}
+
+function logTable(entries, p, withBook) {
+  return `<div class="rd-table-wrap"><table class="rd-table rd-log">
+        <thead><tr><th scope="col">날짜</th>${withBook ? `<th scope="col">책</th>` : ""}<th scope="col">기록</th><th scope="col" class="num">늘어난 쪽</th><th scope="col" class="num">시간</th>${withBook ? "" : `<th scope="col">메모</th>`}</tr></thead>
+        <tbody>${entries.map(({ log, gained }) => {
+          const book = reading.books.find((b) => b.id === log.bookId);
+          const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
+          const bookCell = withBook ? `<td style="${topicVars(shelfOf(book))}"><a class="rd-link" href="${p}reading/books/${esc(book.id)}/"><i class="rd-dot" aria-hidden="true"></i>${esc(book.title)}</a></td>` : "";
+          return `<tr><td class="rd-mono"><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time></td>${bookCell}<td>${esc(what)}</td><td class="num">${log.to != null ? `<b class="rd-plus">+${gained}</b>` : "—"}</td><td class="num">${log.minutes ? `${log.minutes}분` : "—"}</td>${withBook ? "" : `<td class="rd-muted">${esc(log.note || "")}</td>`}</tr>`;
+        }).join("")}</tbody>
+      </table></div>`;
+}
+
+function thumb(book, p) {
+  return book.cover
+    ? `<img class="rd-thumb" src="${p}${esc(book.cover)}" alt="" loading="lazy" width="30" height="42">`
+    : `<span class="rd-thumb blank" aria-hidden="true"></span>`;
+}
+
+function statusCell(book) {
+  if (book.status === "done") return `<span class="rd-badge done">완독</span> <span class="rd-mono">${esc(doneMonth(book))}</span>`;
+  const { page, pct } = readingProgress(book);
+  return `<span class="rd-prog"><span class="rd-bar" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span><b>${pct}%</b><small>${page}/${book.totalPages}쪽</small></span>`;
+}
+
+function statusBlock(book) {
+  if (book.status === "done") {
+    const stars = book.rating ? ` · ${"★".repeat(book.rating)}` : "";
+    return `<div class="rd-status"><span class="rd-badge done">완독</span><b>${esc(doneMonth(book))}</b><span>${esc(stars)}</span></div>`;
+  }
+  const { page, pct } = readingProgress(book);
+  return `<div class="rd-status"><span class="rd-badge reading">읽는 중</span><b>${pct}%</b><span>${page} / ${book.totalPages}쪽</span><span class="rd-bar big" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div>`;
+}
+
+// 완독한 책은 endDate 기준 ‘2026년 10월’
+function doneMonth(book) {
+  if (book.status !== "done") return "";
+  return book.endDate ? `${book.endDate.slice(0, 4)}년 ${Number(book.endDate.slice(5, 7))}월` : "완독";
+}
+
+function coverFace(book, p) {
+  const face = book.cover
+    ? `<img src="${p}${esc(book.cover)}" alt="${esc(book.title)} 표지" loading="lazy">`
+    : `<span class="rd-face-blank"><b>${esc(book.title)}</b><small>${esc(book.author)}</small></span>`;
+  return `<span class="rd-face">${face}</span>`;
+}
+
+// 책 상세의 메모 마인드맵. 저장소 메모(data/notes/<id>.json)를 페이지에 넣어 두고 mindmap.js가 그린다.
+// 스크립트가 돌기 전·못 도는 환경에서는 같은 내용을 목록으로 보여 준다
+function mindmap(book, notes) {
+  const doc = notes || { version: 1, bookId: book.id, updatedAt: "", root: { id: "root", text: book.title, children: [] } };
+  const json = JSON.stringify({ ...doc, root: { ...doc.root, text: book.title } }).replace(/</g, "\\u003c");
+  const outline = (nodes) => (nodes && nodes.length ? `<ul>${nodes.map((n) => `<li>${esc(n.text)}${outline(n.children)}</li>`).join("")}</ul>` : "");
+  const btn = (cmd, label, title, extra = "") => `<button type="button" data-mm="${cmd}" title="${esc(title)}"${extra}>${label}</button>`;
+  return `<div class="mm" data-mindmap data-book="${esc(book.id)}">
+        <div class="mm-bar" role="toolbar" aria-label="마인드맵 도구" data-mm-bar hidden>
+          <div class="mm-group">${btn("child", "＋ 자식", "자식 가지 추가 (Tab)")}${btn("sibling", "＋ 형제", "형제 가지 추가 (Enter)")}${btn("edit", "편집", "글 고치기 (더블클릭 · F2)")}${btn("delete", "삭제", "가지 삭제 (Delete)")}${btn("fold", "접기", "접기·펼치기 (Space)")}</div>
+          <div class="mm-group">${btn("undo", "↶", "되돌리기 (Ctrl+Z)", ' aria-label="되돌리기"')}${btn("redo", "↷", "다시 하기 (Ctrl+Shift+Z)", ' aria-label="다시 하기"')}${btn("layout", "자동 정렬", "손으로 옮긴 위치를 지우고 다시 배치")}</div>
+          <div class="mm-group">${btn("zoom-out", "−", "축소", ' aria-label="축소"')}<output data-mm-zoom>100%</output>${btn("zoom-in", "＋", "확대", ' aria-label="확대"')}${btn("fit", "맞춤", "화면에 맞추기 (0)")}${btn("full", "전체 화면", "전체 화면", ' aria-pressed="false"')}</div>
+          <div class="mm-group mm-io">${btn("export", "JSON 내보내기", `${book.id}.json 파일로 받기`)}${btn("import", "JSON 가져오기", "JSON 파일에서 불러오기")}${btn("reset", "저장소 버전", "브라우저 편집본을 지우고 저장소 메모로 되돌리기")}<input type="file" accept="application/json,.json" data-mm-file hidden></div>
+        </div>
+        <div class="mm-stage" tabindex="0" data-mm-stage aria-label="${esc(book.title)} 메모 마인드맵" aria-roledescription="마인드맵">
+          <div class="mm-outline"><p><b>${esc(book.title)}</b></p>${outline(doc.root.children) || `<p class="rd-muted">아직 메모가 없습니다.</p>`}</div>
+        </div>
+        <div class="mm-foot"><span class="mm-state" data-mm-status aria-live="polite"></span><span class="mm-keys"><kbd>Tab</kbd> 자식 <kbd>Enter</kbd> 형제 <kbd>더블클릭</kbd> 편집 <kbd>Del</kbd> 삭제 <kbd>Space</kbd> 접기 <kbd>Esc</kbd> 선택 해제 · 노드를 끌어 다른 노드 위에 놓으면 그 아래로 · 빈 곳 끌기 이동 · <kbd>Ctrl</kbd>+휠 확대</span></div>
+        <script type="application/json" data-mm-data>${json}</script>
+      </div>`;
+}
+
+function hashOf(text) {
+  let h = 0;
+  for (const ch of String(text)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return h;
 }
 
 /* ---------- PoRA ---------- */
@@ -924,117 +1120,6 @@ function seconds(duration) {
   return duration.split(":").reduce((sum, part) => sum * 60 + Number(part), 0);
 }
 
-function renderShelf(shelf, p) {
-  const now = shelf.books.filter((book) => book.status === "reading").length;
-  const done = shelf.books.length - now;
-  return `<main id="content" class="cream" style="${topicVars(shelf)}">
-  <section class="book-hero">
-    <div class="wrap book-hero-grid">
-      <div class="book-hero-cover">${shelfCover(shelf, p, true)}</div>
-      <div>
-        <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}reading/">독서 기록</a><span aria-hidden="true">/</span><span>${esc(shelf.name)}</span></nav>
-        <p class="kicker">${esc(shelf.en)}</p>
-        <h1>${esc(shelf.name)} 책장</h1>
-        <p class="lede">${esc(shelf.blurb)}</p>
-        <dl class="book-facts">
-          <div><dt>권</dt><dd>${shelf.books.length}</dd></div>
-          <div><dt>📖 읽는 중</dt><dd>${now}</dd></div>
-          <div><dt>✅ 완독</dt><dd>${done}</dd></div>
-        </dl>
-      </div>
-    </div>
-  </section>
-  <section class="band">
-    <div class="wrap">
-      <p class="kicker">꽂힌 책</p>
-      <h2 class="sec-title">${esc(shelf.name)} ${shelf.books.length}권</h2>
-      <p class="sub">읽는 중인 책은 마지막으로 적은 쪽수로 진행률을, 다 읽은 책은 완독한 달을 표지 밑에 적었습니다.</p>
-      ${shelf.books.length ? `<div class="rb-grid">${shelf.books.map((book) => readingBook(book, p)).join("")}</div>` : `<p class="empty">아직 이 책장에 꽂힌 책이 없습니다.</p>`}
-    </div>
-  </section>
-</main>`;
-}
-
-function renderBook(book, p) {
-  const shelf = shelfOf(book);
-  const logs = sortedLogs().filter(({ log }) => log.bookId === book.id).reverse();
-  const facts = [
-    ["분류", book.subcategory ? `${book.category} · ${book.subcategory.split(">").at(-1).trim()}` : book.category],
-    ["출판사", book.publisher],
-    ["출간일", book.pubDate && dotDate(book.pubDate)],
-    ["쪽수", book.pages && `${book.pages}쪽`],
-    ["ISBN", book.isbn],
-    ["읽기 시작", book.startDate && dotDate(book.startDate)],
-    ["완독", book.endDate && dotDate(book.endDate)],
-  ].filter(([, v]) => v);
-  return `<main id="content" class="cream" style="${topicVars(shelf)}">
-  <section class="book-hero">
-    <div class="wrap book-hero-grid">
-      <div class="book-hero-cover rb">${coverFace(book, p)}</div>
-      <div>
-        <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}reading/">독서 기록</a><span aria-hidden="true">/</span><a href="${p}reading/${shelf.id}/">${esc(shelf.name)}</a><span aria-hidden="true">/</span><span>${esc(book.title)}</span></nav>
-        <p class="kicker">${esc(book.subcategory || book.category)}</p>
-        <h1>${esc(book.title)}</h1>
-        <p class="lede">${esc(book.author)}${book.memo ? ` · ${esc(book.memo)}` : ""}</p>
-        <div class="rb-detail-status">${readingStatus(book)}</div>
-        <dl class="book-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
-        <p>${book.kyoboUrl ? `<a class="btn" href="${esc(book.kyoboUrl)}" target="_blank" rel="noopener noreferrer">교보문고에서 보기 ↗</a> ` : ""}<a class="btn ghost" href="${p}reading/${shelf.id}/">${esc(shelf.name)} 책장 →</a></p>
-      </div>
-    </div>
-  </section>
-  <section class="band">
-    <div class="wrap">
-      <p class="kicker">읽은 기록</p>
-      <h2 class="sec-title">쪽수 기록 ${logs.length}개</h2>
-      ${logs.length ? `<figure class="card-panel"><ol class="rlog">${logs.map(({ log, gained }) => {
-        const what = log.to == null ? "독서 시간" : log.mode === "range" ? `${log.from}~${log.to}쪽` : `${log.to}쪽까지`;
-        return `<li><time datetime="${esc(log.date)}">${esc(dotDate(log.date))}</time><span>${log.note ? esc(log.note) : ""}</span><span>${esc(what)}${log.to != null ? ` <b>+${gained}쪽</b>` : ""}${log.minutes ? ` · ${log.minutes}분` : ""}</span></li>`;
-      }).join("")}</ol></figure>` : `<p class="empty">아직 기록이 없습니다.</p>`}
-    </div>
-  </section>
-</main>`;
-}
-
-function coverFace(book, p) {
-  const face = book.cover
-    ? `<img src="${p}${esc(book.cover)}" alt="${esc(book.title)} 표지" loading="lazy">`
-    : `<span class="rb-blank"><b>${esc(book.title)}</b><small>${esc(book.author)}</small></span>`;
-  return `<span class="rb-face">${face}</span>`;
-}
-
-function shelfCover(shelf, p, big = false) {
-  return `<a class="book${big ? " big" : ""}" href="${p}reading/${shelf.id}/" style="${topicVars(shelf)}" aria-label="${esc(shelf.name)} 책장 열기">
-    <span class="book-label">${esc(shelf.en)}</span>
-    <span class="book-title">${esc(shelf.name)}</span>
-    <span class="book-art" aria-hidden="true">${shelfArt(shelf.id)}</span>
-    <span class="book-foot"><span>ReadingLog</span><em>${shelf.books.length}권</em></span>
-  </a>`;
-}
-
-function readingBook(book, p, onHero = false) {
-  const shelf = shelfOf(book);
-  const href = `${p}reading/books/${book.id}/`;
-  const pub = [book.publisher, book.pubDate && dotDate(book.pubDate), book.pages && `${book.pages}쪽`].filter(Boolean);
-  return `<article class="rb" id="${esc(book.id)}" style="${topicVars(shelf)}">
-    <a class="rb-cover" href="${href}" aria-label="${esc(book.title)} 자세히 보기">${coverFace(book, p)}</a>
-    ${readingStatus(book)}
-    <a class="rb-title" href="${href}">${esc(book.title)}</a>
-    <small class="rb-meta">${esc(book.author)}${book.memo ? ` · ${esc(book.memo)}` : ""}</small>
-    ${pub.length ? `<small class="rb-meta">${pub.map(esc).join(" · ")}</small>` : ""}
-    <small class="rb-meta rb-sub">${esc(onHero ? shelf.name : "")}${book.subcategory ? `${onHero ? " · " : ""}${esc(book.subcategory.split(">").at(-1).trim())}` : ""}</small>
-  </article>`;
-}
-
-function readingStatus(book) {
-  if (book.status === "done") {
-    const when = book.endDate ? `${book.endDate.slice(0, 4)}년 ${Number(book.endDate.slice(5, 7))}월` : "완독";
-    const stars = book.rating ? ` · ${"★".repeat(book.rating)}` : "";
-    return `<p class="rb-status done"><b>${esc(when)}</b><span>✅ 완독${esc(stars)}</span></p>`;
-  }
-  const { page, pct } = readingProgress(book);
-  return `<p class="rb-status reading"><span class="rb-bar" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span><b>${pct}%</b><span>📖 읽는 중 · ${page}/${book.totalPages}쪽</span></p>`;
-}
-
 // 진행률은 이 책의 가장 최근 쪽수 기록(날짜, 같은 날이면 기록 시각 순) 기준
 function readingProgress(book) {
   if (book.status === "done") return { page: book.totalPages, pct: 100 };
@@ -1076,13 +1161,6 @@ function byReadingOrder(a, b) {
 
 function shelfOf(book) {
   return shelfByName[book.category];
-}
-
-function shelfArt(id) {
-  const common = `viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`;
-  if (id === "literature") return `<svg ${common}><path d="M58 14C40 18 28 32 24 56l-6 10"/><path d="M58 14c-2 14-10 26-24 32"/><path d="M30 40h12M27 48h8"/></svg>`;
-  if (id === "nonfiction") return `<svg ${common}><circle cx="40" cy="40" r="24"/><path d="M16 40h48M40 16c-8 7-11 15-11 24s3 17 11 24M40 16c8 7 11 15 11 24s-3 17-11 24"/></svg>`;
-  return `<svg ${common}><rect x="14" y="20" width="12" height="42" rx="2"/><rect x="29" y="14" width="12" height="48" rx="2"/><path d="M46 22l11-3 10 40-11 3z"/><path d="M10 64h60"/></svg>`;
 }
 
 /* ---------- covers ---------- */
@@ -1699,4 +1777,41 @@ function validateReading(log) {
   for (const entry of log.logs) {
     if (!ids.has(entry.bookId)) throw new Error(`reading: log ${entry.id} unknown book ${entry.bookId}`);
   }
+}
+
+// data/notes/<bookId>.json: 책마다 메모 마인드맵 하나. 파일 이름이 reading.json에 있는 책 id여야 한다
+function loadNotes(books) {
+  const dir = join(root, "data/notes");
+  const out = {};
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
+    const id = name.slice(0, -5);
+    if (!books.some((book) => book.id === id)) throw new Error(`notes/${name}: no book ${id} in reading.json`);
+    const doc = JSON.parse(readFileSync(join(dir, name), "utf8"));
+    validateNotes(doc, id);
+    out[id] = doc;
+  }
+  return out;
+}
+
+function validateNotes(doc, id) {
+  const ctx = `notes/${id}.json`;
+  if (doc.version !== 1) throw new Error(`${ctx}: version must be 1`);
+  if (doc.bookId !== id) throw new Error(`${ctx}: bookId ${doc.bookId} != ${id}`);
+  if (doc.updatedAt && Number.isNaN(Date.parse(doc.updatedAt))) throw new Error(`${ctx}: updatedAt ${doc.updatedAt}`);
+  const ids = new Set();
+  const walk = (node, depth) => {
+    if (!node || typeof node !== "object") throw new Error(`${ctx}: node must be an object`);
+    if (typeof node.id !== "string" || !/^[\w-]{1,40}$/.test(node.id)) throw new Error(`${ctx}: bad node id ${node.id}`);
+    if (ids.has(node.id)) throw new Error(`${ctx}: duplicate node id ${node.id}`);
+    ids.add(node.id);
+    if (typeof node.text !== "string" || node.text.length > 2000) throw new Error(`${ctx}: ${node.id} text`);
+    if (node.children != null && !Array.isArray(node.children)) throw new Error(`${ctx}: ${node.id} children must be an array`);
+    if (node.collapsed != null && typeof node.collapsed !== "boolean") throw new Error(`${ctx}: ${node.id} collapsed`);
+    if (node.color != null && !(Number.isInteger(node.color) && node.color >= 0 && node.color < 8)) throw new Error(`${ctx}: ${node.id} color must be 0~7`);
+    for (const key of ["dx", "dy"]) if (node[key] != null && !Number.isFinite(node[key])) throw new Error(`${ctx}: ${node.id} ${key}`);
+    if (depth > 30) throw new Error(`${ctx}: deeper than 30 levels`);
+    for (const child of node.children || []) walk(child, depth + 1);
+  };
+  walk(doc.root, 0);
 }
