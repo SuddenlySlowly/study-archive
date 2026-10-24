@@ -269,6 +269,89 @@
     document.querySelectorAll("[data-tip] title").forEach((t) => t.remove());
   }
 
+  /* reading: book spines. 표지에서 색을 뽑아 책등에 칠하고, 올리거나 포커스하면 표지·진행 상태 툴팁 */
+  const spines = [...document.querySelectorAll("[data-spine]")];
+  if (spines.length) {
+    const tint = (img) => {
+      const c = document.createElement("canvas");
+      c.width = 24; c.height = 32;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      const px = ctx.getImageData(0, 0, c.width, c.height).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const max = Math.max(px[i], px[i + 1], px[i + 2]);
+        const min = Math.min(px[i], px[i + 1], px[i + 2]);
+        // 거의 흰색·검은색인 바탕은 빼고, 색이 있는 화소에 무게를 더 준다
+        if (max > 245 && min > 235) continue;
+        const w = 1 + (max - min) / 64;
+        r += px[i] * w; g += px[i + 1] * w; b += px[i + 2] * w; n += w;
+      }
+      if (!n) return null;
+      // HSL로 바꿔 채도·밝기를 책장에 어울리는 범위로 누른다
+      let [h, s, l] = rgbToHsl(r / n, g / n, b / n);
+      s = Math.min(s, 0.42);
+      l = Math.max(0.26, Math.min(l, 0.6));
+      return { css: `hsl(${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`, light: l > 0.52 };
+    };
+    spines.forEach((sp) => {
+      if (!sp.dataset.cover) return;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const t = tint(img);
+          if (!t) return;
+          sp.style.setProperty("--sp", t.css);
+          sp.style.setProperty("--sp-ink", t.light ? "#1c2127" : "#fff");
+        } catch (e) {}
+      };
+      img.src = sp.dataset.cover;
+    });
+
+    const box = document.createElement("div");
+    box.className = "sp-tip";
+    box.hidden = true;
+    box.setAttribute("aria-hidden", "true");
+    body.appendChild(box);
+    const open = (sp) => {
+      const d = sp.dataset;
+      const status = d.status === "done"
+        ? `<dt>상태</dt><dd>완독</dd><dt>완독</dt><dd>${esc(d.when)}</dd>`
+        : `<dt>상태</dt><dd>읽는 중 · ${esc(d.pct)}%</dd>`;
+      const bar = d.status === "done" ? "" : `<span class="rd-bar"><i style="width:${Number(d.pct)}%"></i></span>`;
+      box.style.setProperty("--sp", getComputedStyle(sp).getPropertyValue("--sp"));
+      box.innerHTML = `${d.cover ? `<img class="sp-tip-cover" src="${esc(d.cover)}" alt="">` : `<span class="sp-tip-cover"></span>`}
+        <div><b>${esc(d.title)}</b><span class="sp-tip-who">${esc(d.author)}</span></div>
+        <dl>${status}<dt>쪽수</dt><dd>${esc(d.pages)}쪽</dd></dl>${bar}
+        <span class="sp-tip-hint">누르면 책 상세로</span>`;
+      box.hidden = false;
+      const r = sp.getBoundingClientRect();
+      const x = Math.max(8, Math.min(innerWidth - box.offsetWidth - 8, r.left + r.width / 2 - box.offsetWidth / 2));
+      const above = r.top - box.offsetHeight - 12;
+      box.style.left = `${x}px`;
+      box.style.top = `${above >= 8 ? above : Math.min(innerHeight - box.offsetHeight - 8, r.bottom + 12)}px`;
+    };
+    const close = () => { box.hidden = true; };
+    spines.forEach((sp) => {
+      sp.addEventListener("pointerenter", (ev) => { if (ev.pointerType !== "touch") open(sp); });
+      sp.addEventListener("pointerleave", close);
+      sp.addEventListener("focus", () => open(sp));
+      sp.addEventListener("blur", close);
+    });
+    addEventListener("scroll", close, { passive: true });
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h / 6, s, l];
+  }
+
   /* youtube */
   document.querySelectorAll("[data-yt]").forEach((button) => {
     button.addEventListener("click", () => {
