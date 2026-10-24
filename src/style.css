@@ -746,9 +746,82 @@ a.sum-src:hover span { text-decoration: underline; }
 .gt-concepts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .gt-concepts .tag:hover { color: var(--c); }
 .gt-concepts-note { font-size: 13px; margin: 10px 0 0; }
-/* four tabs on a phone: tighter tabs, then drop the logo (the Study tab also goes home), then scroll */
+/* four tabs on a phone: tighter tabs, then scroll. The logo stays: it is the only way back to the main page */
 .tab-logo { flex: none; }
 .tabs { min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 @media (max-width: 460px) { .tabbar-in { gap: 6px; padding: 0 10px; } .tab { padding: 0 9px; font-size: 13px; } .tabbar .icon-btn { width: 30px; height: 30px; padding: 5px; } }
-@media (max-width: 400px) { .tab-logo { display: none; } }
+/* ---------- Suddenly Universe 로고 ---------- */
+.tab-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #f3f1f8; }
+.tab-logo-name { display: none; font-size: 14px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
+.tab-logo:hover .tab-logo-name { color: #fff; }
+.tab-logo[aria-current="page"] .tab-logo-name { color: var(--amber); }
+@media (min-width: 900px) { .tab-logo-name { display: inline; } }
+
+/* ---------- 메인: 우주 ---------- */
+/* 라이트 모드는 해 질 녘 남색, 다크 모드는 더 깊은 밤. 둘 다 어두운 하늘 */
+:root { --u-top: #2a2d55; --u-bottom: #12132a; --u-glow-1: rgba(154, 169, 212, 0.18); --u-glow-2: rgba(201, 153, 138, 0.12); --u-star: #f6f1e7; --u-ink: #f6f1e7; --u-ink-2: rgba(246, 241, 231, 0.72); --u-ring: rgba(246, 241, 231, 0.16); --u-card: rgba(18, 19, 42, 0.92); }
+:root[data-theme="dark"] { --u-top: #0d0e1f; --u-bottom: #04050c; --u-glow-1: rgba(154, 169, 212, 0.11); --u-glow-2: rgba(201, 153, 138, 0.07); --u-star: #eeeaf2; --u-ink: #eeeaf2; --u-ink-2: rgba(238, 234, 242, 0.66); --u-ring: rgba(238, 234, 242, 0.11); --u-card: rgba(10, 11, 24, 0.94); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --u-top: #0d0e1f; --u-bottom: #04050c; --u-glow-1: rgba(154, 169, 212, 0.11); --u-glow-2: rgba(201, 153, 138, 0.07); --u-star: #eeeaf2; --u-ink: #eeeaf2; --u-ink-2: rgba(238, 234, 242, 0.66); --u-ring: rgba(238, 234, 242, 0.11); --u-card: rgba(10, 11, 24, 0.94); } }
+
+body[data-page="universe"] { background: var(--u-bottom); }
+.universe { --stage: min(860px, 94vw, calc(100svh - var(--tabbar-h) - 64px)); position: relative; isolation: isolate; min-height: calc(100svh - var(--tabbar-h)); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px 40px; overflow: hidden; color: var(--u-ink);
+  background: radial-gradient(60% 50% at 30% 30%, var(--u-glow-1), transparent 70%), radial-gradient(50% 45% at 75% 75%, var(--u-glow-2), transparent 70%), linear-gradient(180deg, var(--u-top), var(--u-bottom)); }
+.sky { position: absolute; inset: 0; z-index: -1; color: var(--u-star); pointer-events: none; }
+.sky svg { width: 100%; height: 100%; max-width: none; }
+.sky .tw { animation: twinkle 9s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.2; } }
+
+.u-stage { position: relative; width: var(--stage); height: var(--stage); flex: none; }
+.u-core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: calc(var(--stage) * 0.3); min-width: 180px; text-align: center; z-index: 1; }
+.u-kicker { margin: 0 0 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em; color: var(--amber); }
+.u-core h1 { margin: 0; font-size: clamp(28px, calc(var(--stage) * 0.058), 48px); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; }
+.u-core h1 span { display: block; }
+.u-tagline { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--u-ink-2); text-wrap: balance; }
+
+.u-orbits { list-style: none; margin: 0; padding: 0; position: absolute; inset: 0; pointer-events: none; }
+/* 궤도 하나 = 지름이 --r × 무대 크기인 원. 원이 돌고, 행성은 반대로 돌아 이름이 늘 똑바로 선다 */
+.u-orbit { --d: calc(var(--stage) * var(--r)); --s: calc(var(--stage) * var(--size) / 860); position: absolute; left: 50%; top: 50%; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border: 1px dashed var(--u-ring); border-radius: 50%; transform: rotate(var(--a)); animation: orbit var(--t) linear infinite; }
+.planet-wrap { position: absolute; left: 50%; top: 0; width: var(--s); height: var(--s); transform: translate(-50%, -50%) rotate(calc(-1 * var(--a))); animation: counter var(--t) linear infinite; pointer-events: auto; }
+@keyframes orbit { from { transform: rotate(var(--a)); } to { transform: rotate(calc(var(--a) + 360deg)); } }
+@keyframes counter { from { transform: translate(-50%, -50%) rotate(calc(-1 * var(--a))); } to { transform: translate(-50%, -50%) rotate(calc(-1 * var(--a) - 360deg)); } }
+/* 행성에 올리거나 포커스하면 모든 궤도가 멈춰서 누르기 쉽다 */
+.u-orbits:hover .u-orbit, .u-orbits:hover .planet-wrap, .u-orbits:focus-within .u-orbit, .u-orbits:focus-within .planet-wrap { animation-play-state: paused; }
+.u-orbit:hover, .u-orbit:focus-within { z-index: 3; }
+
+.planet { position: absolute; inset: 0; display: block; border-radius: 50%; text-decoration: none; color: var(--u-ink); }
+.planet-body { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--pc) 55%, #fff) 0%, var(--pc) 42%, color-mix(in srgb, var(--pc) 45%, #0b0c1a) 100%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--pc) 40%, transparent), 0 0 18px color-mix(in srgb, var(--pc) 28%, transparent); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.planet-body.has-ring::after { content: ""; position: absolute; left: -32%; right: -32%; top: 50%; height: 30%; transform: translateY(-50%) rotate(-16deg); border: 2px solid color-mix(in srgb, var(--pc) 60%, #fff); border-radius: 50%; opacity: 0.55; }
+.planet-name { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--u-bottom) 55%, transparent); transition: color 0.2s, background 0.2s; }
+.planet-desc { position: absolute; left: 50%; top: calc(100% + 36px); width: 220px; margin: 0; transform: translate(-50%, -4px); padding: 9px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--pc) 45%, transparent); background: var(--u-card); color: var(--u-ink-2); font-size: 12.5px; line-height: 1.55; text-align: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.2s, transform 0.2s, visibility 0.2s; }
+.planet-wrap:hover .planet-body, .planet-wrap:focus-within .planet-body { transform: scale(1.14); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc) 75%, #fff), 0 0 34px color-mix(in srgb, var(--pc) 55%, transparent); }
+.planet-wrap:hover .planet-name, .planet-wrap:focus-within .planet-name { background: var(--pc); color: #12132a; }
+.planet-wrap:hover .planet-desc, .planet-wrap:focus-within .planet-desc { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.u-orbits:hover .planet-wrap:not(:hover), .u-orbits:focus-within .planet-wrap:not(:focus-within) { opacity: 0.55; }
+.planet-wrap { transition: opacity 0.2s; }
+.planet:focus-visible { outline: none; }
+.planet:focus-visible .planet-body { outline: 2px solid var(--amber); outline-offset: 5px; }
+
+.u-hint { margin: 18px 0 0; font-size: 12px; color: var(--u-ink-2); }
+.u-hint a { color: inherit; }
+
+/* 좁거나 낮은 화면: 궤도 대신 세로로 늘어선 행성 */
+@media (max-width: 719px), (max-height: 539px) {
+  .universe { justify-content: flex-start; padding: 36px 16px 32px; }
+  .u-stage { width: 100%; max-width: 440px; height: auto; }
+  .u-core { position: static; transform: none; width: auto; margin: 0 0 28px; }
+  .u-core h1 { font-size: clamp(32px, 10vw, 44px); }
+  .u-orbits { position: relative; inset: auto; pointer-events: auto; display: grid; gap: 14px; }
+  .u-orbits::before { content: ""; position: absolute; left: 31px; top: 20px; bottom: 20px; border-left: 1px dashed var(--u-ring); }
+  .u-orbit, .planet-wrap { animation: none; transform: none; }
+  .u-orbit { --s: calc(var(--size) * 0.8px); position: relative; left: auto; top: auto; width: auto; height: auto; margin: 0; border: 0; }
+  .planet-wrap { position: relative; left: auto; top: auto; width: auto; height: auto; }
+  .u-orbits:hover .planet-wrap:not(:hover), .u-orbits:focus-within .planet-wrap:not(:focus-within) { opacity: 1; }
+  .planet { position: relative; inset: auto; display: flex; align-items: center; gap: 12px; min-height: 48px; border-radius: 12px; }
+  .planet-body { position: relative; inset: auto; flex: none; width: var(--s); height: var(--s); margin: 0 calc((64px - var(--s)) / 2); }
+  .planet-name { position: static; transform: none; padding: 0; background: none; font-size: 16px; }
+  .planet-wrap:hover .planet-name, .planet-wrap:focus-within .planet-name { background: none; color: var(--pc); }
+  .planet-desc { position: static; width: auto; margin: -4px 0 0 76px; transform: none; padding: 0; border: 0; background: none; text-align: left; opacity: 1; visibility: visible; }
+  .planet-wrap:hover .planet-desc, .planet-wrap:focus-within .planet-desc { transform: none; }
+  .planet:focus-visible .planet-body { outline-offset: 4px; }
+}

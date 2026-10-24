@@ -16,6 +16,9 @@ const pora = JSON.parse(readFileSync(join(root, "data/pora.json"), "utf8"));
 validatePora(pora);
 const gt = JSON.parse(readFileSync(join(root, "data/jiang-game-theory.json"), "utf8"));
 validateGameTheory(gt);
+const universe = JSON.parse(readFileSync(join(root, "data/planets.json"), "utf8"));
+validatePlanets(universe);
+const SITE = universe.name;
 const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: "#9a3f2c", colorDark: "#f2b4a3" };
 const GT_NOTICE = "요약은 강의 내용(장쉐친의 주장·예측)을 정리한 것이며 사실 검증된 내용이 아닙니다.";
 const SHELF_META = {
@@ -53,20 +56,22 @@ cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
 cpSync(join(root, "data/reading.json"), join(dist, "data/reading.json"));
 cpSync(join(root, "data/pora.json"), join(dist, "data/pora.json"));
 cpSync(join(root, "data/jiang-game-theory.json"), join(dist, "data/jiang-game-theory.json"));
+cpSync(join(root, "data/planets.json"), join(dist, "data/planets.json"));
 cpSync(join(root, "src/covers"), join(dist, "covers"), { recursive: true });
 writeFileSync(join(dist, ".nojekyll"), "");
 writeFileSync(join(dist, "assets/search.json"), JSON.stringify(searchIndex()));
 
 const pages = [];
 const site = (rel, depth, opts) => pages.push(writePage(rel, { depth, chrome: "site", ...opts }));
-site("index.html", 0, { title: data.title, description: data.subtitle, page: "home", body: renderHome });
+pages.push(writePage("index.html", { depth: 0, chrome: "universe", tab: "universe", title: SITE, description: universe.tagline, page: "universe", body: renderUniverse }));
+site("study/index.html", 1, { title: `Study · ${data.title}`, description: data.subtitle, page: "home", body: renderHome });
 site("library/index.html", 1, { title: `전체 책장 · ${data.title}`, description: "주제별 책과 장을 한 번에 봅니다.", page: "library", nav: "library", body: renderLibrary });
 site("map/index.html", 1, { title: `지식 지도 · ${data.title}`, description: "주제와 태그, 장이 어떻게 이어지는지 봅니다.", page: "map", nav: "map", scripts: ["graph.js"], body: renderMap });
 site("summaries/index.html", 1, { title: `콘텐츠별 요약 · ${data.title}`, description: "콘텐츠마다 날짜·주제·핵심 요약·출처·태그·상태를 대주제별로 모았습니다.", page: "summaries", nav: "summaries", body: renderSummaries });
 site("timeline/index.html", 1, { title: `연표 · ${data.title}`, description: "날짜별로 추가한 장을 봅니다.", page: "timeline", nav: "timeline", body: renderTimeline });
-site("reading/index.html", 1, { title: `독서 기록 · ${data.title}`, description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
-site("pora/index.html", 1, { title: `${pora.title} (${pora.short}) · ${data.title}`, description: pora.intro, page: "pora", tab: "pora", body: renderPora });
-site("game-theory/index.html", 1, { title: `${GT.tab} · ${data.title}`, description: `${gt.channel} 채널 ${GT.lecturer}의 ${gt.series} 시리즈 #1~#${gt.episodes.length} 회차별 요약`, page: "game-theory", tab: "game-theory", nav: "list", body: renderGameTheory });
+site("reading/index.html", 1, { title: "독서 기록", description: "분류별 책장에 꽂아 둔 책과 읽은 기록을 봅니다.", page: "reading", tab: "reading", nav: "reading", body: renderReading });
+site("pora/index.html", 1, { title: `${pora.title} (${pora.short})`, description: pora.intro, page: "pora", tab: "pora", body: renderPora });
+site("game-theory/index.html", 1, { title: GT.tab, description: `${gt.channel} 채널 ${GT.lecturer}의 ${gt.series} 시리즈 #1~#${gt.episodes.length} 회차별 요약`, page: "game-theory", tab: "game-theory", nav: "list", body: renderGameTheory });
 for (const ep of gt.episodes) {
   site(`game-theory/${ep.number}/index.html`, 2, { title: `#${ep.number} ${episodeTitle(ep)} · ${GT.tab}`, description: firstSentence(ep.summary), page: "game-theory-episode", tab: "game-theory", body: (p) => renderEpisode(ep, p) });
 }
@@ -94,20 +99,24 @@ writeFileSync(join(dist, "404.html"), page({
   depth: 0,
   absolute: true,
   chrome: "site",
-  title: `없는 페이지 · ${data.title}`,
+  title: "없는 페이지",
   description: data.subtitle,
   page: "missing",
-  body: (p) => `<main id="content" class="cream"><section class="wrap missing"><p class="kicker">404</p><h1>이 주소에는 페이지가 없습니다.</h1><p class="sub">책장에서 다시 찾아보세요.</p><p><a class="btn" href="${p}">공부 아카이브로 돌아가기 →</a> <a class="btn ghost" href="${p}library/">전체 책장 →</a> <a class="btn ghost" href="${p}reading/">독서 기록 →</a></p></section></main>`,
+  body: (p) => `<main id="content" class="cream"><section class="wrap missing"><p class="kicker">404</p><h1>이 주소에는 페이지가 없습니다.</h1><p class="sub">메인에서 다시 찾아보세요.</p><p><a class="btn" href="${p}">${esc(SITE)}로 돌아가기 →</a> <a class="btn ghost" href="${p}study/">Study →</a> <a class="btn ghost" href="${p}library/">전체 책장 →</a> <a class="btn ghost" href="${p}reading/">독서 기록 →</a></p></section></main>`,
 }));
 // 없앤 숫자 모음(/figures/)과 /numbers/ 주소는 콘텐츠별 요약으로 보낸다
-for (const old of ["figures", "numbers"]) writeRedirect(`${old}/index.html`, "summaries/");
+for (const old of ["figures", "numbers"]) writeRedirect(`${old}/index.html`, "summaries/", "콘텐츠별 요약");
+// 행성마다 가리키는 탭 페이지가 실제로 만들어졌는지 확인
+for (const planet of universe.planets) {
+  if (!existsSync(join(dist, planet.href, "index.html"))) throw new Error(`planet ${planet.id}: no page at ${planet.href}`);
+}
 writeFileSync(join(dist, "robots.txt"), "User-agent: *\nAllow: /\n");
 writeFileSync(join(dist, "sitemap.xml"), sitemap(pages));
 console.log(`built ${pages.length} pages → dist/`);
 
 /* ---------- page shell ---------- */
 
-function writeRedirect(rel, target) {
+function writeRedirect(rel, target, label) {
   const file = join(dist, rel);
   const to = "../".repeat(rel.split("/").length - 1) + target;
   mkdirSync(dirname(file), { recursive: true });
@@ -115,13 +124,13 @@ function writeRedirect(rel, target) {
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>콘텐츠별 요약으로 옮겼습니다 · ${esc(data.title)}</title>
+<title>${esc(label)}으로 옮겼습니다 · ${esc(SITE)}</title>
 <meta name="robots" content="noindex">
 <link rel="canonical" href="${esc(`${data.site}/${target}`)}">
 <meta http-equiv="refresh" content="0; url=${to}">
 <script>location.replace(${JSON.stringify(to)} + location.search + location.hash);</script>
 </head>
-<body><p><a href="${to}">콘텐츠별 요약</a>으로 옮겼습니다.</p></body>
+<body><p><a href="${to}">${esc(label)}</a>으로 옮겼습니다.</p></body>
 </html>
 `);
 }
@@ -143,14 +152,14 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)}</title>
+<title>${esc(title === SITE ? SITE : `${title} · ${SITE}`)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(data.site + canonPath)}">
 <link rel="icon" href="${prefix}favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#15162a">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
-<meta property="og:site_name" content="${esc(data.title)}">
+<meta property="og:site_name" content="${esc(SITE)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(data.site + canonPath)}">
@@ -159,10 +168,10 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 </head>
 <body data-page="${esc(pageName || "")}" data-tab="${tab}" data-root="${prefix}"${style}>
 <a class="skip" href="#content">본문으로</a>
-${tabBar(prefix, tab, pageName)}
-${chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : tab === "pora" ? poraHeader(prefix) : tab === "game-theory" ? gameTheoryHeader(prefix, nav) : siteHeader(prefix, nav)}
+${tabBar(prefix, tab, path)}
+${chrome === "universe" ? "" : chrome === "reader" ? readerHeader(prefix, item) : tab === "reading" ? readingHeader(prefix, nav) : tab === "pora" ? poraHeader(prefix) : tab === "game-theory" ? gameTheoryHeader(prefix, nav) : siteHeader(prefix, nav)}
 ${body(prefix)}
-${footer(prefix, tab)}
+${chrome === "universe" ? "" : footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
 <script src="${prefix}assets/site.js" defer></script>${scripts.map((name) => `
 <script src="${prefix}assets/${name}" defer></script>`).join("")}
@@ -172,8 +181,9 @@ ${footer(prefix, tab)}
 }
 
 
+// 고리 두른 행성 하나. 탭바 로고와 파비콘이 같은 모양
 function logo() {
-  return `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 8h9c1.2 1 2.8 1 4 0h9v16h-9c-1.2 1-2.8 1-4 0H5z" fill="#f3e6d4"/><path d="M16 8.6v15" stroke="#d68a2c" stroke-width="1.6"/><path d="M8 13h5M8 16.5h5M19 13h5M19 16.5h5" stroke="#8a4b12" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+  return `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="8.5" fill="#9aa9d4"/><path d="M8.6 12.4a8.5 8.5 0 0 1 14.8 0" fill="none" stroke="#dfe5f6" stroke-width="1.4" stroke-linecap="round" opacity=".7"/><ellipse cx="16" cy="16" rx="14" ry="4.6" fill="none" stroke="#f4b740" stroke-width="1.6" transform="rotate(-18 16 16)"/><circle cx="26.5" cy="6" r="1.2" fill="#f3f1f8"/></svg>`;
 }
 
 function searchBox(prefix, placeholder) {
@@ -184,17 +194,15 @@ function searchBox(prefix, placeholder) {
     </form>`;
 }
 
-// 모든 페이지 맨 위에 고정되는 섹션 탭. Study = 공부 아카이브, 독서기록 = /reading/, PoRA = /pora/, 장쉐친 게임이론 = /game-theory/
-function tabBar(prefix, tab, pageName) {
-  const tabs = [
-    ["study", "Study", prefix, pageName === "home"],
-    ["reading", "독서기록", `${prefix}reading/`, pageName === "reading"],
-    ["pora", tabLabel(pora), `${prefix}pora/`, pageName === "pora"],
-    ["game-theory", tabLabel(GT), `${prefix}game-theory/`, pageName === "game-theory"],
-  ].map(([id, label, href, isRoot]) => `<a class="tab${id === tab ? " is-active" : ""}" href="${href}"${id === tab ? ` aria-current="${isRoot ? "page" : "true"}"` : ""}>${label}</a>`).join("");
+// 모든 페이지 맨 위에 고정되는 섹션 탭. 탭 목록은 data/planets.json의 행성 순서 그대로이고, 로고는 메인(/)으로 간다
+function tabBar(prefix, tab, path) {
+  const tabs = universe.planets.map(({ id, label, short, href }) => {
+    const on = id === tab;
+    return `<a class="tab${on ? " is-active" : ""}" href="${prefix}${href}"${on ? ` aria-current="${path === `${href}index.html` ? "page" : "true"}"` : ""}>${tabLabel({ tab: label, short })}</a>`;
+  }).join("");
   return `<div class="tabbar">
   <div class="tabbar-in">
-    <a class="tab-logo" href="${prefix}" aria-label="홈">${logo()}</a>
+    <a class="tab-logo" href="${prefix}" aria-label="${esc(SITE)} 메인"${tab === "universe" ? ' aria-current="page"' : ""}>${logo()}<span class="tab-logo-name">${esc(SITE)}</span></a>
     <nav class="tabs" aria-label="섹션">${tabs}</nav>
     <div class="top-icons">
       <button class="icon-btn" type="button" data-theme-toggle aria-label="라이트와 다크 모드 전환">${ICON.moon}</button>
@@ -220,7 +228,7 @@ function siteHeader(prefix, nav) {
   ].map(([id, label]) => `<a href="${prefix}${id}/"${id === nav ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   return `<header class="topbar">
   <div class="topbar-in">
-    <a class="brand" href="${prefix}"><span>공부 아카이브</span></a>
+    <a class="brand" href="${prefix}study/"><span>${esc(data.title)}</span></a>
     ${searchBox(prefix, "책 이름이나 주제로 검색")}
     <nav class="topnav" aria-label="Study">${links}</nav>
   </div>
@@ -306,9 +314,59 @@ function footer(prefix, tab) {
 </div></footer>`;
   }
   return `<footer class="site-footer"><div class="wrap foot-in">
-  <p>© 공부 아카이브 · 수치는 각 메모에 적힌 문장에서만 그렸습니다.</p>
-  <nav aria-label="바닥 메뉴"><a href="${prefix}">홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}summaries/">콘텐츠별 요약</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
+  <p>© ${esc(SITE)} · 공부 아카이브 · 수치는 각 메모에 적힌 문장에서만 그렸습니다.</p>
+  <nav aria-label="바닥 메뉴"><a href="${prefix}">${esc(SITE)}</a><a href="${prefix}study/">Study 홈</a><a href="${prefix}library/">전체 책장</a><a href="${prefix}map/">지식 지도</a><a href="${prefix}summaries/">콘텐츠별 요약</a><a href="${prefix}timeline/">연표</a><a href="${prefix}data/archive.json">archive.json</a><a href="${REPO}">이 사이트의 소스</a></nav>
 </div></footer>`;
+}
+
+/* ---------- universe (main) ---------- */
+
+// 메인(/). 가운데 사이트 이름, 그 둘레 궤도마다 탭 하나가 행성으로 돈다. 행성 목록은 data/planets.json
+function renderUniverse(p) {
+  const planets = universe.planets.map((planet) => `<li class="u-orbit" style="--r:${planet.orbit};--a:${planet.angle}deg;--t:${planet.period}s;--size:${planet.size};--pc:${planet.color}">
+        <div class="planet-wrap">
+          <a class="planet" href="${p}${planet.href}" aria-describedby="planet-${planet.id}-desc">
+            <span class="planet-body${planet.ring ? " has-ring" : ""}" aria-hidden="true"></span>
+            <span class="planet-name">${esc(planet.label)}</span>
+          </a>
+          <p class="planet-desc" id="planet-${planet.id}-desc">${esc(planet.desc)}</p>
+        </div>
+      </li>`).join("\n      ");
+  return `<main id="content" class="universe">
+  <div class="sky" aria-hidden="true">${starField(150)}</div>
+  <section class="u-stage" aria-labelledby="u-title">
+    <div class="u-core">
+      <p class="u-kicker">WELCOME TO</p>
+      <h1 id="u-title"><span>${esc(SITE.split(" ")[0])}</span> <span>${esc(SITE.split(" ").slice(1).join(" "))}</span></h1>
+      <p class="u-tagline">${esc(universe.tagline)}</p>
+    </div>
+    <ul class="u-orbits" aria-label="탭">
+      ${planets}
+    </ul>
+  </section>
+  <p class="u-hint">행성을 누르면 그 탭으로 갑니다 · <a href="${REPO}">GitHub</a></p>
+</main>`;
+}
+
+// 빌드마다 같은 자리에 찍히도록 고정 시드로 별을 뿌린다. 몇 개만 천천히 깜빡인다
+function starField(count) {
+  let seed = 20261024;
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const stars = Array.from({ length: count }, (_, i) => {
+    const x = (rand() * 1000).toFixed(1);
+    const y = (rand() * 1000).toFixed(1);
+    const r = (0.5 + rand() * rand() * 1.6).toFixed(2);
+    const o = (0.25 + rand() * 0.6).toFixed(2);
+    return i % 7 === 0
+      ? `<circle class="tw" cx="${x}" cy="${y}" r="${r}" opacity="${o}" style="animation-delay:-${(rand() * 9).toFixed(1)}s"/>`
+      : `<circle cx="${x}" cy="${y}" r="${r}" opacity="${o}"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="currentColor">${stars}</svg>`;
 }
 
 /* ---------- home ---------- */
@@ -329,14 +387,14 @@ function renderHome(p) {
         <div class="hero-side">
           <p>${esc(data.subtitle)}</p>
           <p class="hero-legend">${esc(data.statusLegend)}</p>
-          <a class="hero-link" href="library/">전체 책장 둘러보기 →</a>
+          <a class="hero-link" href="${p}library/">전체 책장 둘러보기 →</a>
         </div>
       </div>
-      <nav class="hero-pills" aria-label="주제">${data.topics.map((t) => `<a href="topics/${t.id}/">${esc(t.name)} <span>${itemsByTopic[t.id].length}</span> →</a>`).join("")}</nav>
-      <div class="shelf-head"><h2>처음 펼치기 좋은 책</h2><a href="library/">전체 ${data.topics.length}권 보기 →</a></div>
-      <div class="shelf"><div class="shelf-row books-${data.topics.length}">${data.topics.map((t) => bookCover(t, "")).join("")}</div></div>
-      <div class="shelf-head"><h2>최근 추가된 장</h2><a href="timeline/">연표로 보기 →</a></div>
-      <div class="shelf"><div class="shelf-row">${recent.map((item) => chapterCover(item, "")).join("")}</div></div>
+      <nav class="hero-pills" aria-label="주제">${data.topics.map((t) => `<a href="${p}topics/${t.id}/">${esc(t.name)} <span>${itemsByTopic[t.id].length}</span> →</a>`).join("")}</nav>
+      <div class="shelf-head"><h2>처음 펼치기 좋은 책</h2><a href="${p}library/">전체 ${data.topics.length}권 보기 →</a></div>
+      <div class="shelf"><div class="shelf-row books-${data.topics.length}">${data.topics.map((t) => bookCover(t, p)).join("")}</div></div>
+      <div class="shelf-head"><h2>최근 추가된 장</h2><a href="${p}timeline/">연표로 보기 →</a></div>
+      <div class="shelf"><div class="shelf-row">${recent.map((item) => chapterCover(item, p)).join("")}</div></div>
     </div>
   </section>
 
@@ -345,8 +403,8 @@ function renderHome(p) {
       <p class="kicker">숫자로 펼쳐 보기</p>
       <h2 class="sec-title">궁금한 그림에서 시작해 보세요</h2>
       <p class="sub">메모 문장에 적힌 수치로만 그린 차트입니다. 카드를 누르면 해당 장의 그림으로 이어집니다.</p>
-      <div class="fan" style="--n:${chartItems.length}">${chartItems.map((item, i) => fanCard(item, i, "")).join("")}</div>
-      <p class="center"><a class="more" href="summaries/">콘텐츠별 요약 전체 보기 →</a></p>
+      <div class="fan" style="--n:${chartItems.length}">${chartItems.map((item, i) => fanCard(item, i, p)).join("")}</div>
+      <p class="center"><a class="more" href="${p}summaries/">콘텐츠별 요약 전체 보기 →</a></p>
     </div>
   </section>
 
@@ -362,10 +420,10 @@ function renderHome(p) {
         <div><b>${data.items.reduce((n, item) => n + item.highlights.length, 0)}</b><span>적힌 숫자</span></div>
       </div>
       <div class="dash">
-        <figure class="card-panel">${topicCountChart("")}</figure>
+        <figure class="card-panel">${topicCountChart(p)}</figure>
         <figure class="card-panel">${statusChart(data.items)}</figure>
-        <figure class="card-panel wide">${dayChart(data.items, "")}</figure>
-        <figure class="card-panel wide">${tagCloud(data.items, "")}</figure>
+        <figure class="card-panel wide">${dayChart(data.items, p)}</figure>
+        <figure class="card-panel wide">${tagCloud(data.items, p)}</figure>
       </div>
     </div>
   </section>
@@ -438,7 +496,7 @@ function renderTopic(topic, p) {
     <div class="wrap book-hero-grid">
       <div class="book-hero-cover">${bookCover(topic, p, true)}</div>
       <div>
-        <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}library/">전체 책장</a><span aria-hidden="true">/</span><span>${esc(topic.name)}</span></nav>
+        <nav class="crumbs" aria-label="경로"><a href="${p}study/">Study</a><span aria-hidden="true">/</span><a href="${p}library/">전체 책장</a><span aria-hidden="true">/</span><span>${esc(topic.name)}</span></nav>
         <p class="kicker">${esc(topic.en)}</p>
         <h1>${esc(topic.name)}</h1>
         <p class="lede">${esc(topic.blurb)}</p>
@@ -521,7 +579,7 @@ function renderItem(item, p) {
   const goals = sections.filter((s) => s.id.startsWith("sec-")).map((s) => s.title);
   return `<div class="reader">
   <main id="content" class="reader-main">
-    <nav class="crumbs" aria-label="경로"><a href="${p}">홈</a><span aria-hidden="true">/</span><a href="${p}topics/${topic.id}/">${esc(topic.name)}</a><span aria-hidden="true">/</span><span>제${no}장</span></nav>
+    <nav class="crumbs" aria-label="경로"><a href="${p}study/">Study</a><span aria-hidden="true">/</span><a href="${p}topics/${topic.id}/">${esc(topic.name)}</a><span aria-hidden="true">/</span><span>제${no}장</span></nav>
     <p class="ch-no">${pad(no)} <span>${esc(topic.en)} · ${esc(dotDate(item.date))}</span></p>
     <h1 class="ch-title">${esc(item.title)}</h1>
     <div class="ch-meta">${badge(item.status)}${item.tags.map((tag) => `<a class="tag" href="${p}map/#${tagId(tag)}">#${esc(tag)}</a>`).join("")}</div>
@@ -1567,6 +1625,26 @@ function validatePora(book) {
     if (ids.has(step.id)) throw new Error(`pora: duplicate checklist id ${step.id}`);
     ids.add(step.id);
     if (!step.label) throw new Error(`pora: checklist ${step.id} label`);
+  }
+}
+
+function validatePlanets(u) {
+  if (!String(u.name || "").trim() || !String(u.tagline || "").trim()) throw new Error("planets: name/tagline missing");
+  if (!u.planets?.length) throw new Error("planets: empty");
+  const ids = new Set();
+  for (const planet of u.planets) {
+    const ctx = `planets: ${planet.id}`;
+    if (!/^[a-z0-9-]+$/.test(planet.id || "")) throw new Error(`planets: id ${planet.id}`);
+    if (ids.has(planet.id)) throw new Error(`${ctx} duplicate id`);
+    ids.add(planet.id);
+    for (const key of ["label", "short", "desc"]) if (!String(planet[key] || "").trim()) throw new Error(`${ctx} ${key} missing`);
+    if (!/^[a-z0-9-]+(\/[a-z0-9-]+)*\/$/.test(planet.href || "")) throw new Error(`${ctx} href must be a relative folder like "reading/": ${planet.href}`);
+    if (!/^#[0-9a-f]{6}$/i.test(planet.color || "")) throw new Error(`${ctx} color ${planet.color}`);
+    const range = (key, lo, hi) => { if (!(typeof planet[key] === "number" && planet[key] >= lo && planet[key] <= hi)) throw new Error(`${ctx} ${key} must be ${lo}~${hi}: ${planet[key]}`); };
+    range("size", 24, 80);
+    range("orbit", 0.4, 0.96);
+    range("angle", 0, 360);
+    range("period", 30, 600);
   }
 }
 
