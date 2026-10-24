@@ -725,3 +725,30 @@ a.sum-src:hover span { text-decoration: underline; }
 .tab-long { white-space: pre; }
 @media (max-width: 520px) { .tabbar-in { gap: 8px; } .tab { padding: 0 12px; } .tab-long { display: none; } }
 .pora-progress .pora-reset .btn.ghost { color: var(--ink); }
+/* ---------- 장쉐친 게임이론 ---------- */
+.gt-notice { background: color-mix(in srgb, var(--st-reading) 13%, var(--bg)); border-bottom: 1px solid color-mix(in srgb, var(--st-reading) 35%, var(--line)); }
+.gt-notice p { margin: 0; padding: 10px 0; font-size: 14px; color: var(--ink); }
+.gt-notice b { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--st-reading); color: var(--st-reading); font-size: 12px; line-height: 1.7; }
+.gt-hero-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.gt-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.gt-grid li[hidden] { display: none; }
+.gt-card { position: relative; display: flex; flex-direction: column; gap: 8px; height: 100%; min-width: 0; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 6px 14px 14px 6px; box-shadow: var(--shadow); text-decoration: none; transition: border-color 0.15s, transform 0.15s; }
+.gt-card:hover { border-color: var(--c); transform: translateY(-2px); }
+.gt-card:hover h3 { text-decoration: underline; }
+.gt-no { font-family: var(--mono); font-weight: 800; font-size: 22px; line-height: 1; color: var(--c); }
+.gt-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.gt-src { font-family: var(--font); font-weight: 700; color: var(--st-reading); border: 1px solid currentColor; border-radius: 999px; padding: 0 7px; }
+.gt-card h3 { margin: 0; font-size: 17px; font-weight: 800; }
+.gt-lede { font-size: 14px; line-height: 1.7; color: var(--ink-2); }
+.gt-tags { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: auto; padding-top: 4px; font-size: 12px; color: var(--muted); }
+.gt-video-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.gt-reupload { margin-top: -6px; font-size: 13px; }
+.gt-concepts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.gt-concepts .tag:hover { color: var(--c); }
+.gt-concepts-note { font-size: 13px; margin: 10px 0 0; }
+/* four tabs on a phone: tighter tabs, then drop the logo (the Study tab also goes home), then scroll */
+.tab-logo { flex: none; }
+.tabs { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 460px) { .tabbar-in { gap: 6px; padding: 0 10px; } .tab { padding: 0 9px; font-size: 13px; } .tabbar .icon-btn { width: 30px; height: 30px; padding: 5px; } }
+@media (max-width: 400px) { .tab-logo { display: none; } }

@@ -102,6 +102,30 @@
     apply();
   }
 
+  /* game theory: episode search, kept in ?q= */
+  const gtInput = document.querySelector("[data-gt-search]");
+  if (gtInput) {
+    const cards = [...document.querySelectorAll("[data-gt-find]")];
+    const count = document.querySelector("[data-gt-count]");
+    const empty = document.querySelector("[data-gt-empty]");
+    gtInput.value = new URLSearchParams(location.search).get("q") || "";
+    const apply = () => {
+      const q = fold(gtInput.value);
+      let shown = 0;
+      cards.forEach((card) => {
+        card.hidden = Boolean(q) && !fold(card.dataset.gtFind).includes(q);
+        if (!card.hidden) shown += 1;
+      });
+      count.textContent = q ? `${shown} / ${cards.length}회 · 검색 적용` : `${cards.length}회`;
+      empty.hidden = shown > 0;
+      const next = new URLSearchParams();
+      if (gtInput.value.trim()) next.set("q", gtInput.value.trim());
+      history.replaceState(null, "", `${location.pathname}${next.toString() ? `?${next}` : ""}${location.hash}`);
+    };
+    gtInput.addEventListener("input", apply);
+    apply();
+  }
+
   /* library tabs + ?q= filter */
   const tabs = [...document.querySelectorAll("[data-shelf-tab]")];
   if (tabs.length) {
