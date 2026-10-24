@@ -219,20 +219,23 @@
       }
     }
 
-    // 점
+    // 점: 대주제 허브는 같은 넓이의 사각형, 콘텐츠·태그는 원
+    const shape = (n, r) => {
+      ctx.beginPath();
+      if (n.type === "hub") { const a = r * 0.886; ctx.rect(n.x - a, n.y - a, a * 2, a * 2); }
+      else ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    };
     for (const n of order) {
       const on = lit(n);
       ctx.globalAlpha = on ? 1 : 0.12;
       ctx.fillStyle = n === focus && n.type === "tag" ? C.hi : n.color;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      shape(n, n.r);
       ctx.fill();
       if (focus && on) {
-        ctx.lineWidth = (n === focus ? 2 : 1.2) / scale;
+        ctx.lineWidth = (n === focus ? 1.5 : 1) / scale;
         ctx.strokeStyle = C.hi;
-        ctx.globalAlpha = n === focus ? 0.75 : 0.45;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r + (n === focus ? 3.5 : 1.5) / scale, 0, Math.PI * 2);
+        ctx.globalAlpha = n === focus ? 0.8 : 0.45;
+        shape(n, n.r + (n === focus ? 3.5 : 1.5) / scale);
         ctx.stroke();
       }
     }
@@ -241,18 +244,18 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     const fade = clamp((scale - 1.5) * 1.6, 0, 1);
-    ctx.lineJoin = "round";
+    ctx.lineJoin = "miter";
     ctx.strokeStyle = C.bg;
     // 초점 이름은 맨 위에 오도록 마지막에
     for (const n of focus ? order.filter((m) => m !== focus).concat(focus) : order) {
       let size = 11.5;
-      let weight = 500;
+      let weight = 400;
       let a = 0;
       let max = 18;
       if (focus) {
-        if (n === focus) { size = 13.5; weight = 800; a = 1; max = 60; }
+        if (n === focus) { size = 13.5; weight = 600; a = 1; max = 60; }
         else if (focus.nb.has(n)) { a = 0.9; max = focus.nb.size > 8 ? 14 : 22; }
-      } else if (n.type === "hub") { size = 13; weight = 800; a = 1; }
+      } else if (n.type === "hub") { size = 13; weight = 500; a = 1; }
       else a = fade * 0.85;
       if (!a) continue;
       ctx.globalAlpha = a;
@@ -442,7 +445,6 @@
   readColors();
   const recolor = () => { readColors(); draw(); };
   new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", recolor);
   new ResizeObserver(resize).observe(canvas);
   resize();
 
