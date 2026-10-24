@@ -20,12 +20,22 @@ validateGameTheory(gt);
 const universe = JSON.parse(readFileSync(join(root, "data/planets.json"), "utf8"));
 validatePlanets(universe);
 const SITE = universe.name;
-const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: "#9a3f2c", colorDark: "#f2b4a3" };
+// 색은 docs/palantir-design-spec.md 기준. 대주제·책장은 스펙 차트 팔레트(blue·gold·green·red·indigo·cerulean·orange·lime)를
+// 채도 낮게 눌러 쓰고, 탭마다 포인트 컬러는 하나만 둔다. archive.json·pora.json의 color 값은 그대로 두고 화면에서만 바꾼다
+const PALETTE = [
+  ["#4a6c9b", "#8fb0de"], ["#8a6f33", "#d6bd80"], ["#417559", "#8ec3a6"], ["#9c5257", "#e0a1a6"],
+  ["#6a609e", "#b2a9de"], ["#3e7590", "#8cc1d9"], ["#96693c", "#ddb287"], ["#6c7c42", "#b8cb8a"],
+];
+data.topics.forEach((topic, i) => Object.assign(topic, { color: PALETTE[i % PALETTE.length][0], colorDark: PALETTE[i % PALETTE.length][1] }));
+Object.assign(pora, { color: "#7a6838", colorDark: "#d1bd8a" });
+const GT = { tab: "장쉐친 게임이론", short: "게임이론", lecturer: "장쉐친", lecturerEn: "Jiang Xueqin", color: "#8f4a43", colorDark: "#f2c4bf" };
+// 화면에 장식용 이모지를 쓰지 않는다(상태 표시 📥📖✅ 등은 글자만)
+const plain = (text) => String(text).replace(/\p{Extended_Pictographic}\uFE0F?\s*/gu, "");
 const GT_NOTICE = "요약은 강의 내용(장쉐친의 주장·예측)을 정리한 것이며 사실 검증된 내용이 아닙니다.";
 const SHELF_META = {
-  문학: { id: "literature", en: "Literature", color: "#2f5f8f", colorDark: "#a3c8f0", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
-  비문학: { id: "nonfiction", en: "Non-fiction", color: "#5b4a8e", colorDark: "#c9bdf5", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
-  미분류: { id: "uncategorized", en: "Unsorted", color: "#6b6258", colorDark: "#d4cbbf", blurb: "아직 분류를 정하지 않은 책입니다." },
+  문학: { id: "literature", en: "Literature", color: "#4a6c9b", colorDark: "#8fb0de", blurb: "소설·시·에세이처럼 이야기와 문장을 읽는 책입니다.", always: true },
+  비문학: { id: "nonfiction", en: "Non-fiction", color: "#6a609e", colorDark: "#b2a9de", blurb: "역사·사회·과학처럼 사실과 주장을 따라가는 책입니다.", always: true },
+  미분류: { id: "uncategorized", en: "Unsorted", color: "#5f6b7c", colorDark: "#abb3bf", blurb: "아직 분류를 정하지 않은 책입니다." },
 };
 const shelves = readingShelves(reading.books);
 const shelfByName = Object.fromEntries(shelves.map((shelf) => [shelf.name, shelf]));
@@ -160,7 +170,7 @@ function page({ title, description, depth, body, page: pageName, path, absolute,
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(data.site + canonPath)}">
 <link rel="icon" href="${prefix}favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#15162a">
+<meta name="theme-color" content="#111418">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="${esc(SITE)}">
@@ -185,9 +195,9 @@ ${chrome === "universe" ? "" : footer(prefix, tab)}
 }
 
 
-// 고리 두른 행성 하나. 탭바 로고와 파비콘이 같은 모양
+// 궤도 하나와 그 위의 행성(포인트 컬러) 하나. 탭바 로고와 파비콘이 같은 모양
 function logo() {
-  return `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="8.5" fill="#9aa9d4"/><path d="M8.6 12.4a8.5 8.5 0 0 1 14.8 0" fill="none" stroke="#dfe5f6" stroke-width="1.4" stroke-linecap="round" opacity=".7"/><ellipse cx="16" cy="16" rx="14" ry="4.6" fill="none" stroke="#f4b740" stroke-width="1.6" transform="rotate(-18 16 16)"/><circle cx="26.5" cy="6" r="1.2" fill="#f3f1f8"/></svg>`;
+  return `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/><circle class="logo-dot" cx="24.13" cy="7.87" r="3"/></svg>`;
 }
 
 function searchBox(prefix, placeholder) {
@@ -327,20 +337,19 @@ function footer(prefix, tab) {
 
 // 메인(/). 가운데 사이트 이름, 그 둘레 궤도마다 탭 하나가 행성으로 돈다. 행성 목록은 data/planets.json
 function renderUniverse(p) {
-  const planets = universe.planets.map((planet) => `<li class="u-orbit" style="--r:${planet.orbit};--a:${planet.angle}deg;--t:${planet.period}s;--size:${planet.size};--pc:${planet.color}">
+  const planets = universe.planets.map((planet, i) => `<li class="u-orbit" style="--r:${planet.orbit};--a:${planet.angle}deg;--t:${planet.period}s;--size:${planet.size}">
         <div class="planet-wrap">
           <a class="planet" href="${p}${planet.href}" aria-describedby="planet-${planet.id}-desc">
             <span class="planet-body${planet.ring ? " has-ring" : ""}" aria-hidden="true"></span>
-            <span class="planet-name">${esc(planet.label)}</span>
+            <span class="planet-name"><span class="planet-no">${pad(i + 1)}</span> — ${esc(planet.label)}</span>
           </a>
           <p class="planet-desc" id="planet-${planet.id}-desc">${esc(planet.desc)}</p>
         </div>
       </li>`).join("\n      ");
   return `<main id="content" class="universe">
-  <div class="sky" aria-hidden="true">${starField(150)}</div>
   <section class="u-stage" aria-labelledby="u-title">
     <div class="u-core">
-      <p class="u-kicker">WELCOME TO</p>
+      <p class="u-kicker">00 — Index · ${pad(universe.planets.length)} tabs</p>
       <h1 id="u-title"><span>${esc(SITE.split(" ")[0])}</span> <span>${esc(SITE.split(" ").slice(1).join(" "))}</span></h1>
       <p class="u-tagline">${esc(universe.tagline)}</p>
     </div>
@@ -350,27 +359,6 @@ function renderUniverse(p) {
   </section>
   <p class="u-hint">행성을 누르면 그 탭으로 갑니다 · <a href="${REPO}">GitHub</a></p>
 </main>`;
-}
-
-// 빌드마다 같은 자리에 찍히도록 고정 시드로 별을 뿌린다. 몇 개만 천천히 깜빡인다
-function starField(count) {
-  let seed = 20261024;
-  const rand = () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const stars = Array.from({ length: count }, (_, i) => {
-    const x = (rand() * 1000).toFixed(1);
-    const y = (rand() * 1000).toFixed(1);
-    const r = (0.5 + rand() * rand() * 1.6).toFixed(2);
-    const o = (0.25 + rand() * 0.6).toFixed(2);
-    return i % 7 === 0
-      ? `<circle class="tw" cx="${x}" cy="${y}" r="${r}" opacity="${o}" style="animation-delay:-${(rand() * 9).toFixed(1)}s"/>`
-      : `<circle cx="${x}" cy="${y}" r="${r}" opacity="${o}"/>`;
-  }).join("");
-  return `<svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" fill="currentColor">${stars}</svg>`;
 }
 
 /* ---------- home ---------- */
@@ -390,7 +378,7 @@ function renderHome(p) {
         </div>
         <div class="hero-side">
           <p>${esc(data.subtitle)}</p>
-          <p class="hero-legend">${esc(data.statusLegend)}</p>
+          <p class="hero-legend">${esc(plain(data.statusLegend))}</p>
           <a class="hero-link" href="${p}library/">전체 책장 둘러보기 →</a>
         </div>
       </div>
@@ -420,7 +408,7 @@ function renderHome(p) {
       <div class="kpis">
         <div><b>${data.topics.length}</b><span>권(주제)</span></div>
         <div><b>${data.items.length}</b><span>장(메모)</span></div>
-        ${Object.entries(data.statuses).map(([id, s]) => `<div><b>${counts[id] || 0}</b><span>${esc(s.mark)} ${esc(s.label)}</span></div>`).join("")}
+        ${Object.entries(data.statuses).map(([id, s]) => `<div><b>${counts[id] || 0}</b><span>${esc(s.label)}</span></div>`).join("")}
         <div><b>${data.items.reduce((n, item) => n + item.highlights.length, 0)}</b><span>적힌 숫자</span></div>
       </div>
       <div class="dash">
@@ -434,11 +422,11 @@ function renderHome(p) {
 
   <section class="note-band">
     <div class="wrap note-grid">
-      <div><p class="kicker">ARCHIVE NOTE</p><span class="bigquote" aria-hidden="true">“</span></div>
+      <div><p class="kicker">ARCHIVE NOTE</p></div>
       <div class="note-body">
         <h2>${esc(data.title)}</h2>
         <p>${esc(data.subtitle)}.</p>
-        <p>${esc(data.statusLegend)}</p>
+        <p>${esc(plain(data.statusLegend))}</p>
         <p>차트와 숫자 카드는 각 메모의 요약 문장에 실제로 적힌 값만 씁니다. 문장에 없는 숫자는 빌드 단계에서 걸러집니다. 원본 문서의 빈 ‘내 생각’ 칸은 비어 있는 채로 두었습니다.</p>
         <div class="sign"><span class="avatar" aria-hidden="true">${logo()}</span><div><b>${esc(data.title)}</b><small>마지막 정리 ${esc(dotDate(data.updated))}</small></div><a href="${REPO}">GitHub →</a></div>
       </div>
@@ -506,7 +494,7 @@ function renderTopic(topic, p) {
         <p class="lede">${esc(topic.blurb)}</p>
         <dl class="book-facts">
           <div><dt>장</dt><dd>${items.length}</dd></div>
-          ${Object.entries(data.statuses).map(([id, s]) => `<div><dt>${esc(s.mark)} ${esc(s.label)}</dt><dd>${counts[id] || 0}</dd></div>`).join("")}
+          ${Object.entries(data.statuses).map(([id, s]) => `<div><dt>${esc(s.label)}</dt><dd>${counts[id] || 0}</dd></div>`).join("")}
           <div><dt>최근</dt><dd>${esc(dotDate(topic.overviewLatest))}</dd></div>
         </dl>
         <p><a class="btn" href="${p}items/${items[0].id}/">1장부터 읽기 →</a></p>
@@ -1003,7 +991,7 @@ function renderPora(p) {
       <p class="kicker">바로가기</p>
       <h2 class="sec-title">교재와 강의 자료</h2>
       <p class="sub">카드를 누르면 새 탭에서 열립니다.</p>
-      <ul class="pora-links">${pora.links.map((link) => `<li><a class="pora-link" href="${esc(link.url)}" ${ext}><span class="pora-ico" aria-hidden="true">${link.icon}</span><span class="pora-txt"><b>${esc(link.label)}</b><small>${esc(link.desc)}</small><span class="pora-url">${esc(new URL(link.url).host)}</span></span><span class="pora-go" aria-hidden="true">↗</span><span class="sr-only">(새 탭)</span></a></li>`).join("")}</ul>
+      <ul class="pora-links">${pora.links.map((link, i) => `<li><a class="pora-link" href="${esc(link.url)}" ${ext}><span class="pora-ico" aria-hidden="true">${pad(i + 1)}</span><span class="pora-txt"><b>${esc(link.label)}</b><small>${esc(link.desc)}</small><span class="pora-url">${esc(new URL(link.url).host)}</span></span><span class="pora-go" aria-hidden="true">↗</span><span class="sr-only">(새 탭)</span></a></li>`).join("")}</ul>
     </div>
   </section>
 
@@ -1145,7 +1133,7 @@ function readingShelves(books) {
   for (const book of books) if (!names.includes(book.category)) names.push(book.category);
   let extra = 0;
   return names.map((name) => {
-    const meta = SHELF_META[name] || { id: `shelf-${++extra}`, en: "Shelf", color: "#3f6b4f", colorDark: "#a8d8b6", blurb: `${name}으로 분류한 책입니다.` };
+    const meta = SHELF_META[name] || { id: `shelf-${++extra}`, en: "Shelf", color: "#417559", colorDark: "#8ec3a6", blurb: `${name}으로 분류한 책입니다.` };
     const list = books.filter((book) => book.category === name).sort(byReadingOrder);
     return { ...meta, name, books: list };
   });
@@ -1228,7 +1216,7 @@ function barSvg(visual) {
         const n = Number.parseFloat(value);
         const a = sx(Math.min(0, n));
         const w = Math.max(n === 0 ? 0 : 2, Math.abs(sx(n) - sx(0)));
-        parts.push(`<rect class="bar s${i}" data-s="${i}" x="${a.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${bh}" rx="3" data-tip="${esc(tip)}"><title>${esc(tip)}</title></rect>`);
+        parts.push(`<rect class="bar s${i}" data-s="${i}" x="${a.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${bh}" data-tip="${esc(tip)}"><title>${esc(tip)}</title></rect>`);
         const tx = n < 0 ? a - 6 : a + w + 6;
         parts.push(`<text class="val" data-s="${i}" x="${tx.toFixed(1)}" y="${y + bh - 5}" text-anchor="${n < 0 ? "end" : "start"}">${esc(shown(value, visual.unit))}</text>`);
       }
@@ -1276,7 +1264,7 @@ function columnThumb(visual) {
       const n = Number.parseFloat(value);
       const y = sy(Math.max(0, n));
       const h = Math.max(n === 0 ? 0 : 2, Math.abs(sy(n) - sy(0)));
-      return `<rect class="s${i}" x="${(gx + i * (bw + 3)).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3"/>`;
+      return `<rect class="s${i}" x="${(gx + i * (bw + 3)).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`;
     }).join("");
     return `${bars}<text class="tick" x="${(10 + r * groupW + groupW / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(row.label)}</text>`;
   }).join("");
@@ -1375,7 +1363,7 @@ function statusChart(items) {
   const entries = Object.entries(data.statuses);
   return `<div class="fig-title">읽기 상태</div>
   <div class="stackbar" role="img" aria-label="${entries.map(([id, s]) => `${s.label} ${counts[id] || 0}`).join(", ")}">${entries.filter(([id]) => counts[id]).map(([id, s]) => `<i class="st-${id}" style="flex:${counts[id]}" data-tip="${esc(s.label)}: ${counts[id]}장"></i>`).join("")}</div>
-  <ul class="st-legend">${entries.map(([id, s]) => `<li><i class="sw st-${id}"></i>${esc(s.mark)} ${esc(s.label)} <b>${counts[id] || 0}</b><small>${total ? Math.round(((counts[id] || 0) / total) * 100) : 0}%</small></li>`).join("")}</ul>`;
+  <ul class="st-legend">${entries.map(([id, s]) => `<li><i class="sw st-${id}"></i>${esc(s.label)} <b>${counts[id] || 0}</b><small>${total ? Math.round(((counts[id] || 0) / total) * 100) : 0}%</small></li>`).join("")}</ul>`;
 }
 
 function dayChart(items, p, onlyTopic) {
@@ -1467,26 +1455,26 @@ function highlightCard(entry, p) {
 
 
 function glyph(type) {
-  const c = `viewBox="0 0 80 56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+  const c = `viewBox="0 0 80 56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"`;
   const g = {
     "grouped-bar": `<path d="M8 50h64"/><path d="M14 50V26M20 50V32M34 50V14M40 50V22M54 50V30M60 50V36"/>`,
     bars: `<path d="M8 50h64"/><path d="M16 50V20M30 50V34M44 50V26M58 50V40"/>`,
     range: `<path d="M8 30h64"/><path d="M8 24v12M72 24v12"/><circle cx="22" cy="30" r="5" fill="currentColor"/>`,
-    meter: `<rect x="8" y="22" width="64" height="12" rx="6"/><path d="M14 28h36" stroke-width="6"/>`,
-    flow: `<rect x="4" y="20" width="18" height="16" rx="3"/><rect x="31" y="20" width="18" height="16" rx="3"/><rect x="58" y="20" width="18" height="16" rx="3"/><path d="M23 28h7M50 28h7"/>`,
-    split: `<rect x="6" y="8" width="30" height="40" rx="3"/><rect x="44" y="8" width="30" height="40" rx="3"/><path d="M12 18h18M12 26h14M50 18h18M50 26h14"/>`,
+    meter: `<rect x="8" y="22" width="64" height="12"/><path d="M14 28h36" stroke-width="6"/>`,
+    flow: `<rect x="4" y="20" width="18" height="16"/><rect x="31" y="20" width="18" height="16"/><rect x="58" y="20" width="18" height="16"/><path d="M23 28h7M50 28h7"/>`,
+    split: `<rect x="6" y="8" width="30" height="40"/><rect x="44" y="8" width="30" height="40"/><path d="M12 18h18M12 26h14M50 18h18M50 26h14"/>`,
     checklist: `<path d="M10 14l4 4 7-8M10 30l4 4 7-8M10 46l4 4 7-8"/><path d="M30 14h40M30 30h40M30 46h30"/>`,
     timeline: `<path d="M6 28h68"/><circle cx="14" cy="28" r="4"/><circle cx="34" cy="28" r="4"/><circle cx="54" cy="28" r="4"/><circle cx="70" cy="28" r="4" fill="currentColor"/>`,
-    stack: `<rect x="22" y="6" width="36" height="9" rx="2"/><rect x="16" y="18" width="48" height="9" rx="2"/><rect x="10" y="30" width="60" height="9" rx="2"/><rect x="4" y="42" width="72" height="9" rx="2"/>`,
-    stats: `<rect x="6" y="10" width="30" height="36" rx="4"/><rect x="44" y="10" width="30" height="36" rx="4"/><path d="M14 24h14M52 24h14" stroke-width="4"/><path d="M14 36h10M52 36h10"/>`,
+    stack: `<rect x="22" y="6" width="36" height="9"/><rect x="16" y="18" width="48" height="9"/><rect x="10" y="30" width="60" height="9"/><rect x="4" y="42" width="72" height="9"/>`,
+    stats: `<rect x="6" y="10" width="30" height="36"/><rect x="44" y="10" width="30" height="36"/><path d="M14 24h14M52 24h14" stroke-width="4"/><path d="M14 36h10M52 36h10"/>`,
     quote: `<path d="M18 36c0-10 4-16 12-18M44 36c0-10 4-16 12-18"/><circle cx="22" cy="38" r="5"/><circle cx="48" cy="38" r="5"/>`,
-    callout: `<rect x="8" y="10" width="64" height="30" rx="6"/><path d="M22 40l-4 10 12-10"/>`,
+    callout: `<rect x="8" y="10" width="64" height="30"/><path d="M22 40l-4 10 12-10"/>`,
   };
   return `<svg class="glyph" ${c} aria-hidden="true">${g[type] || g.quote}</svg>`;
 }
 
 function art(id) {
-  const common = `viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`;
+  const common = `viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square" stroke-linejoin="miter"`;
   if (id === "ai-education") return `<svg ${common}><path d="M14 24h22c4 4 8 4 12 0h18v34c-5 3-8 3-13 0H36c-4 3-8 3-12 0H14V24z"/><path d="M40 24v34"/><path d="M20 32h12M20 38h10M48 32h12M48 38h10"/></svg>`;
   if (id === "economy") return `<svg ${common}><path d="M12 58h56"/><path d="M20 58V40M32 58V28M44 58V36M56 58V18"/><path d="M16 22h18l6 8 10-12 12 8"/></svg>`;
   if (id === "agents") return `<svg ${common}><circle cx="22" cy="26" r="6"/><circle cx="54" cy="22" r="6"/><circle cx="40" cy="52" r="7"/><path d="M27 30l8 16M49 28l-6 17M28 26h20"/></svg>`;
@@ -1509,7 +1497,7 @@ function topicVars(topic) {
 
 function badge(status) {
   const s = data.statuses[status];
-  return `<span class="badge st-${status}">${esc(s.mark)} ${esc(s.label)}</span>`;
+  return `<span class="badge st-${status}">${esc(s.label)}</span>`;
 }
 
 function figId(item, vi) {

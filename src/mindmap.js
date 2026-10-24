@@ -248,7 +248,7 @@
       else frame(start);
     }
 
-    // 부모 옆면 가운데에서 자식 옆면 가운데로 가는 3차 베지어. 안쪽 가지일수록 굵게
+    // 부모 옆면 가운데에서 자식 옆면 가운데로 가는 1px 직각 연결선(가로 → 세로 → 가로). 1단계 가지만 조금 굵게
     function edges(at) {
       let out = "";
       at.forEach((p) => {
@@ -260,9 +260,9 @@
         const y1 = q.y + q.h / 2;
         const x2 = p.dir > 0 ? p.x : p.x + p.w;
         const y2 = p.y + p.h / 2;
-        const mx = (x2 - x1) * 0.55;
-        const width = p.depth === 1 ? 2.6 : p.depth === 2 ? 1.8 : 1.3;
-        out += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}C${(x1 + mx).toFixed(1)} ${y1.toFixed(1)} ${(x2 - mx).toFixed(1)} ${y2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}" style="--b:var(--b${p.color})" stroke-width="${width}"/>`;
+        const mx = x1 + (x2 - x1) * 0.5;
+        const width = p.depth === 1 ? 1.5 : 1;
+        out += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}H${mx.toFixed(1)}V${y2.toFixed(1)}H${x2.toFixed(1)}" style="--b:var(--b${p.color})" stroke-width="${width}"/>`;
       });
       svg.innerHTML = out;
     }

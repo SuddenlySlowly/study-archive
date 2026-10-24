@@ -290,7 +290,7 @@
       if (!n) return null;
       // HSL로 바꿔 채도·밝기를 책장에 어울리는 범위로 누른다
       let [h, s, l] = rgbToHsl(r / n, g / n, b / n);
-      s = Math.min(s, 0.42);
+      s = Math.min(s, 0.3);
       l = Math.max(0.26, Math.min(l, 0.6));
       return { css: `hsl(${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`, light: l > 0.52 };
     };
