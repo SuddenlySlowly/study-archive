@@ -1,0 +1,55 @@
+{
+  "name": "Suddenly Universe",
+  "tagline": "공부·독서·강의 기록이 궤도를 도는 작은 우주",
+  "planets": [
+    {
+      "id": "study",
+      "label": "Study",
+      "short": "Study",
+      "href": "study/",
+      "desc": "X에서 태깅하거나 채팅으로 보낸 공부를 주제별 책과 장으로 정리한 아카이브",
+      "color": "#9aa9d4",
+      "size": 62,
+      "orbit": 0.46,
+      "angle": 300,
+      "period": 140
+    },
+    {
+      "id": "reading",
+      "label": "독서기록",
+      "short": "독서기록",
+      "href": "reading/",
+      "desc": "분류별 책장에 꽂아 둔 책, 진행률과 완독한 달",
+      "color": "#cdb291",
+      "size": 50,
+      "orbit": 0.62,
+      "angle": 70,
+      "period": 190
+    },
+    {
+      "id": "pora",
+      "label": "PoRA 로봇 자율성",
+      "short": "PoRA",
+      "href": "pora/",
+      "desc": "Principles of Robot Autonomy 교재 바로가기와 공부 진도 체크리스트",
+      "color": "#8fb3a6",
+      "size": 42,
+      "orbit": 0.78,
+      "angle": 200,
+      "period": 240
+    },
+    {
+      "id": "game-theory",
+      "label": "장쉐친 게임이론",
+      "short": "게임이론",
+      "href": "game-theory/",
+      "desc": "Predictive History 장쉐친의 Game Theory 강의 #1~#29 회차별 요약",
+      "color": "#c9998a",
+      "size": 54,
+      "orbit": 0.94,
+      "angle": 20,
+      "period": 300,
+      "ring": true
+    }
+  ]
+}
