@@ -69,6 +69,7 @@ cpSync(join(root, "src/style.css"), join(dist, "assets/style.css"));
 cpSync(join(root, "src/site.js"), join(dist, "assets/site.js"));
 cpSync(join(root, "src/graph.js"), join(dist, "assets/graph.js"));
 cpSync(join(root, "src/mindmap.js"), join(dist, "assets/mindmap.js"));
+cpSync(join(root, "src/bgm.js"), join(dist, "assets/bgm.js"));
 cpSync(join(root, "src/favicon.svg"), join(dist, "favicon.svg"));
 mkdirSync(join(dist, "data"), { recursive: true });
 cpSync(join(root, "data/archive.json"), join(dist, "data/archive.json"));
@@ -194,7 +195,8 @@ ${chrome === "universe" ? "" : chrome === "reader" ? readerHeader(prefix, item) 
 ${body(prefix)}
 ${chrome === "universe" ? "" : footer(prefix, tab)}
 <div class="tip" data-tip-box hidden></div>
-<script src="${prefix}assets/site.js" defer></script>${scripts.map((name) => `
+<script src="${prefix}assets/site.js" defer></script>
+<script src="${prefix}assets/bgm.js" defer></script>${scripts.map((name) => `
 <script src="${prefix}assets/${name}" defer></script>`).join("")}
 </body>
 </html>
