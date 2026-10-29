@@ -68,6 +68,16 @@
       "colorDark": "#b8c4d2",
       "overviewCount": 1,
       "overviewLatest": "2026-10-29"
+    },
+    {
+      "id": "mindset",
+      "name": "mindset",
+      "en": "Mindset",
+      "blurb": "태도와 사고방식을 다룬 영상 요약 메모.",
+      "color": "#6b5a3e",
+      "colorDark": "#d6c6a8",
+      "overviewCount": 1,
+      "overviewLatest": "2026-10-29"
     }
   ],
   "items": [
@@ -1681,6 +1691,27 @@
           ]
         }
       ]
+    },
+    {
+      "id": "jay-shetty-focus",
+      "topic": "mindset",
+      "date": "2026-10-29",
+      "title": "차이는 재능이 아니라 집중하는 것 (제이 셰티)",
+      "summary": "제이 셰티는 약한 사람과 강한 사람이 같은 것을 보고도 다르게 반응한다고 대비한다. 남의 실수를 보고 약한 사람은 비웃고 강한 사람은 배운다. 남의 문제를 이야기할 때 약한 사람은 자기 기분을 위해, 강한 사람은 더 나아지기 위해 말한다. 약한 사람은 뒷담화로 가짜 관계를 만들고, 강한 사람은 약한 모습을 드러내 진짜 관계를 만든다. 앞서가는 사람을 약한 사람은 질투하고 강한 사람은 연구한다. 결국 약하거나 강한 사람이 따로 있는 게 아니라, 무엇에 집중하느냐의 차이라고 말한다.",
+      "source": {
+        "label": "YouTube Shorts: The Difference Is Rarely Talent. It’s What You Choose To Focus On | Jay Shetty | Character Fuel\nhttps://youtube.com/shorts/qSZWnmCwlyo",
+        "url": "https://youtube.com/shorts/qSZWnmCwlyo",
+        "kind": "youtube"
+      },
+      "thought": null,
+      "tags": [
+        "마인드셋",
+        "집중",
+        "제이셰티"
+      ],
+      "status": "done",
+      "highlights": [],
+      "visuals": []
     }
   ]
 }
