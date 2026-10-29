@@ -60,7 +60,7 @@ const TYPE_LABEL = {
   "grouped-bar": "비교 막대", bars: "막대", range: "범위", meter: "진행률", flow: "흐름도", split: "나란히 보기",
   checklist: "체크리스트", timeline: "타임라인", stack: "계층도", stats: "수치 카드", quote: "인용", callout: "메모",
 };
-const SOURCE_KIND = { youtube: "YouTube", "youtube-title": "YouTube (제목만)", x: "X", "x-video": "X 영상" };
+const SOURCE_KIND = { youtube: "YouTube", "youtube-title": "YouTube (제목만)", x: "X", "x-video": "X 영상", pdf: "PDF" };
 
 const dist = join(root, "dist");
 rmSync(dist, { recursive: true, force: true });

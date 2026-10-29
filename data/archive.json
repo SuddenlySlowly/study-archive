@@ -63,10 +63,10 @@
       "id": "pltr",
       "name": "PLTR",
       "en": "Palantir",
-      "blurb": "팔란티어 관련 영상을 요약한 메모.",
+      "blurb": "팔란티어 관련 영상·문서를 요약한 메모.",
       "color": "#3a4a5c",
       "colorDark": "#b8c4d2",
-      "overviewCount": 1,
+      "overviewCount": 3,
       "overviewLatest": "2026-10-29"
     },
     {
@@ -1708,6 +1708,50 @@
         "마인드셋",
         "집중",
         "제이셰티"
+      ],
+      "status": "done",
+      "highlights": [],
+      "visuals": []
+    },
+    {
+      "id": "palantir-evals-sovereign-ai",
+      "topic": "pltr",
+      "date": "2026-10-29",
+      "title": "Evals as the Substrate for Sovereign AI: 평가(Eval)로 판단을 자산으로 만들기",
+      "summary": "팔란티어 백서(24쪽). 모델에게 일을 통째로 맡기고 사람이 뒷정리하는 '데모웨어'를 경계하고, AI는 운영자가 입는 슈트처럼 구체적인 결정을 돕도록 만들어야 한다고 말한다. 반복 가능한 일은 규칙·도구로, 새로운 일(사기 탐지 같은 발견 작업)은 모델 추론으로 나누고, 모델이 제안한 내용, 운영자의 수정, 결과를 '결정 기록'으로 남긴다. 이 기록이 쌓인 평가 세트(eval)가 경쟁사가 가질 수 없는 기관 고유의 알파다. 검증된 판단은 사람이 코드로 옮기거나(감사 가능) 학습으로 가중치에 녹여(일반화) '상각된 숙고'가 된다. HD현대오일뱅크 휘발유 블렌딩 스케줄링(PSS)에서는 Scenario 샌드박스에서 운영자가 병합·수정·거절한 차이가 가장 값진 신호였다. 문제 크기는 그대로지만 매번 고민해야 하는 결정 면적이 줄어드는 것이 목표다.",
+      "source": {
+        "label": "PDF: Palantir — Evals as the Substrate for Sovereign AI\nhttps://www.palantir.com/assets/xrfr7uokpv1b/4mztHRLrQU3T5CoNpX7QUH/3e1ecde0ca3344937b813e55e8ea118b/Evals_as_the_Substrate_for_Sovereign_AI.pdf",
+        "url": "https://www.palantir.com/assets/xrfr7uokpv1b/4mztHRLrQU3T5CoNpX7QUH/3e1ecde0ca3344937b813e55e8ea118b/Evals_as_the_Substrate_for_Sovereign_AI.pdf",
+        "kind": "pdf"
+      },
+      "thought": null,
+      "tags": [
+        "팔란티어",
+        "AI주권",
+        "Eval",
+        "온톨로지"
+      ],
+      "status": "done",
+      "highlights": [],
+      "visuals": []
+    },
+    {
+      "id": "palantir-autoresearch-ft-ontology",
+      "topic": "pltr",
+      "date": "2026-10-29",
+      "title": "AutoResearch와 Fine-Tuning Ontology: 내 데이터로 내 모델을 만드는 공장",
+      "summary": "팔란티어 문서(22쪽). AutoResearch는 기관의 사후 학습(post-training)을 자동화한다. 팀이 Fine-Tuning Ontology에서 데이터와 목표 능력, 성공 기준, 예산을 정하면 데이터 조합·기법·하이퍼파라미터를 바꿔가며 실험하고 평가해 비용 대비 성능이 가장 좋은 모델을 올린다. Fine-Tuning Ontology는 학습의 세 요소인 데이터셋, 학습 기법(SFT·DPO·GRPO 등 검증된 레시피), 모델 가중치를 기관이 소유하는 구조로, ERP·MES·CRM 기록과 결정·결과를 학습 데이터로 바꾸고 계보·버전·보안 표시를 붙인다. 만든 데이터셋과 가중치는 직접 쓰거나 화이트라벨로 배포·임대할 수 있다. CNC 장비 과열 경보 대응 예시로 정의→온톨로지 표현→평가셋 분리→데이터 조합→레시피→평가→반복→배포→운영 학습까지 11단계를 보여준다.",
+      "source": {
+        "label": "PDF: Palantir — AutoResearch and the Fine-Tuning Ontology\nhttps://www.palantir.com/assets/xrfr7uokpv1b/71GBpNOzMizxDnonP5d7ea/67a9967e58df7b8703269d0b60a33401/AutoResearch_and_the_Fine-Tuning_Ontology.pdf",
+        "url": "https://www.palantir.com/assets/xrfr7uokpv1b/71GBpNOzMizxDnonP5d7ea/67a9967e58df7b8703269d0b60a33401/AutoResearch_and_the_Fine-Tuning_Ontology.pdf",
+        "kind": "pdf"
+      },
+      "thought": null,
+      "tags": [
+        "팔란티어",
+        "AI주권",
+        "파인튜닝",
+        "온톨로지"
       ],
       "status": "done",
       "highlights": [],
