@@ -43,11 +43,11 @@
       "id": "agents",
       "name": "AI·에이전트",
       "en": "Agents",
-      "blurb": "코딩 에이전트의 신뢰, 구글 AI 인프라, 팔란티어의 AI 주권에 대한 메모.",
+      "blurb": "코딩 에이전트의 신뢰와 구글 AI 인프라에 대한 메모.",
       "color": "#0f6e62",
       "colorDark": "#8ee0d4",
-      "overviewCount": 3,
-      "overviewLatest": "2026-10-29"
+      "overviewCount": 2,
+      "overviewLatest": "2026-10-15"
     },
     {
       "id": "security",
@@ -58,6 +58,16 @@
       "colorDark": "#f3b3bd",
       "overviewCount": 1,
       "overviewLatest": "2026-10-11"
+    },
+    {
+      "id": "pltr",
+      "name": "PLTR",
+      "en": "Palantir",
+      "blurb": "팔란티어 관련 영상을 요약한 메모.",
+      "color": "#3a4a5c",
+      "colorDark": "#b8c4d2",
+      "overviewCount": 1,
+      "overviewLatest": "2026-10-29"
     }
   ],
   "items": [
@@ -1625,7 +1635,7 @@
     },
     {
       "id": "karp-sovereignty-bootcamp3",
-      "topic": "agents",
+      "topic": "pltr",
       "date": "2026-10-29",
       "title": "알렉스 카프 개회사: AI 주권과 작동하는 제품 (Sovereignty Bootcamp 3)",
       "summary": "팔란티어 CEO 알렉스 카프의 「Sovereignty Bootcamp 3」 4분 개회사(자막이 없어 음성을 받아써 정리). 2008년 첫 계약 이후 지금이 가장 좋은 때라며, 가장 급진적인 일은 특수부대원 같은 사용자를 위해 제품이 실제로 작동하게 만드는 것이었다고 말한다. 현장 배치 엔지니어, 수평적 조직, 철저한 실력주의, 최근까지 영업 조직이 없었던 결정을 꼽고, '모델 회사 토큰을 사야 성능이 나온다'는 주장은 고객의 IP와 주권을 빼앗는 논리라고 반박한다. 모델 학습, 모델을 온톨로지에 연결하기, 마이크로 모델처럼 고객 IP를 키우는 활용 사례를 소개한다.",
