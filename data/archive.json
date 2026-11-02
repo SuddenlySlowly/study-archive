@@ -3,7 +3,7 @@
   "subtitle": "X에서 태깅하거나 채팅으로 보낸 내용을 카테고리별로 정리하는 문서",
   "statusLegend": "상태: 📥 읽을거리 · 📖 공부중 · ✅ 정리완료",
   "site": "https://suddenlyslowly.github.io/study-archive",
-  "updated": "2026-10-29",
+  "updated": "2026-11-03",
   "statuses": {
     "reading": {
       "label": "공부중",
@@ -36,8 +36,8 @@
       "blurb": "매크로비욘드와 관련 영상에서 붙잡은 금리, 물가, AI 투자 메모.",
       "color": "#8a4b12",
       "colorDark": "#f0b27a",
-      "overviewCount": 18,
-      "overviewLatest": "2026-10-16"
+      "overviewCount": 19,
+      "overviewLatest": "2026-11-03"
     },
     {
       "id": "agents",
@@ -1752,6 +1752,28 @@
         "AI주권",
         "파인튜닝",
         "온톨로지"
+      ],
+      "status": "done",
+      "highlights": [],
+      "visuals": []
+    },
+    {
+      "id": "nischa-passive-income-lie",
+      "topic": "economy",
+      "date": "2026-11-03",
+      "title": "패시브 인컴은 거짓말, 대신 이렇게 (니샤 샤)",
+      "summary": "전직 투자은행원 니샤 샤가 제이 셰티 팟캐스트에서 돈 관리 순서를 설명한다. 완전히 수동적인 소득은 없고, 가장 손이 덜 가는 방법은 주식시장 장기 투자라고 말한다. 6개월 계획은 비상금 2,000달러(뱅가드 연구상 재정 만족도 최대 21% 상승) → 3~6개월 생활비 쿠션 → 연 8% 넘는 고금리 빚 상환 → 투자 순서다. 월급은 생활 필수 65%, 즐거움 25%, 미래의 나 10%로 나누고, 월급날 저축부터 자동이체한다. 살 때는 '꼭 필요한가, 덜 써도 되나, 더 싸게 살 수 있나'를 묻고, 남에게 보여주기용 소비·자잘한 업그레이드·브랜드값을 줄인다. 절약에는 한계가 있으니 가치를 높여 소득을 늘리라고 강조한다.",
+      "source": {
+        "label": "YouTube: Money Expert: Passive Income Is a Lie, Do THIS Instead | Nischa Shah (Jay Shetty Podcast)\nhttps://youtu.be/r5LF5kp8wLI",
+        "url": "https://youtu.be/r5LF5kp8wLI",
+        "kind": "youtube"
+      },
+      "thought": null,
+      "tags": [
+        "재테크",
+        "투자",
+        "저축",
+        "니샤샤"
       ],
       "status": "done",
       "highlights": [],
